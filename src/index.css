@@ -64,8 +64,8 @@ h1, h2, p { margin: 0; }
 .card-axis { border-radius: 20px; padding: 18px 18px 18px 20px; display: flex; align-items: center; gap: 14px; min-height: 120px; }
 .row-item { display: flex; align-items: flex-start; gap: 4px; padding: 16px 0; border-bottom: 1px solid var(--surface); }
 .sep { height: 12px; background: var(--surface); }
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 96px; width: calc(min(480px, 100vw) - 32px); background: var(--ink); color: #fff; border-radius: 14px; padding: 16px 18px; font-size: 15px; font-weight: 500; z-index: 50; animation: toast 3s ease forwards; }
-@keyframes toast { 0% { opacity: 0; transform: translate(-50%, 12px); } 10%, 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 12px); } }
+.toast { display: flex; align-items: center; position: fixed; left: 50%; transform: translateX(-50%); bottom: 96px; width: calc(min(480px, 100vw) - 32px); background: var(--ink); color: #fff; border-radius: 14px; padding: 16px 18px; font-size: 15px; font-weight: 500; z-index: 50; animation: toast 4s ease forwards; }
+@keyframes toast { 0% { opacity: 0; transform: translate(-50%, 12px); } 8%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 12px); visibility: hidden; } }
 
 /* 로딩 */
 .loading { position: fixed; inset: 0; background: #fff; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 36px; padding: 0 32px; }
@@ -90,3 +90,9 @@ h1, h2, p { margin: 0; }
 .intro .bottom { background: linear-gradient(to bottom, rgba(255,255,255,0), #fff 18%); }
 .intro-tile { border-radius: 20px; padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 10px; animation: tileIn .5s cubic-bezier(.3,.7,.4,1) both; }
 @keyframes tileIn { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+
+/* 관심없음 스와이프 */
+.swipe { position: relative; overflow: hidden; border-bottom: 1px solid var(--surface); }
+.swipe .act { position: absolute; top: 0; right: 0; bottom: 0; width: 96px; border: 0; background: #F04452; color: #fff; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.swipe .front { position: relative; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; background: #fff; display: flex; align-items: flex-start; gap: 4px; padding: 16px 0; touch-action: pan-y; transition: transform .2s ease; }
+.swipe .front.dragging { transition: none; }

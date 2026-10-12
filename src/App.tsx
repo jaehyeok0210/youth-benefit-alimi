@@ -39,6 +39,24 @@ export default function App() {
     (id: string) => setState((s) => ({ ...s, saved: s.saved.includes(id) ? s.saved.filter((x) => x !== id) : [...s.saved, id] })),
     [],
   )
+  const [undo, setUndo] = useState<{ id: string; n: number } | null>(null)
+  const toggleHide = useCallback((id: string) => {
+    setState((s) => {
+      const isHidden = s.hidden.includes(id)
+      return {
+        ...s,
+        hidden: isHidden ? s.hidden.filter((x) => x !== id) : [...s.hidden, id],
+        saved: isHidden ? s.saved : s.saved.filter((x) => x !== id),
+      }
+    })
+  }, [])
+  const hide = useCallback(
+    (id: string) => {
+      toggleHide(id)
+      setUndo((u) => ({ id, n: (u?.n ?? 0) + 1 }))
+    },
+    [toggleHide],
+  )
   const finishLoading = useCallback(() => {
     const wasRebuild = loading === 'rebuild'
     setLoading(null)
@@ -63,7 +81,7 @@ export default function App() {
   const step = Math.min(STEP_COUNT, Math.max(1, Number(parts[1]) || 1))
   const needsData = !['', 'start', 'edit'].includes(route)
   if (needsData && !data) return <div className="app"><Splash /></div>
-  const ctx = data ? { data, profile: state.profile, judged, saved: state.saved, toggleSave } : null!
+  const ctx = data ? { data, profile: state.profile, judged, saved: state.saved, toggleSave, hidden: state.hidden, hide, unhide: toggleHide } : null!
 
   let screen: ReactNode = null
   if (route === '') {
@@ -120,6 +138,12 @@ export default function App() {
       {screen}
       {loading && <Loading rebuild={loading === 'rebuild'} onDone={finishLoading} />}
       {toast > 0 && <Toast key={toast}>바뀐 조건으로 대시보드를 다시 만들었어요</Toast>}
+      {undo && state.hidden.includes(undo.id) && (
+        <Toast key={`u${undo.n}`}>
+          <span style={{ flex: 1 }}>관심없음으로 옮겼어요</span>
+          <button onClick={() => { toggleHide(undo.id); setUndo(null) }} style={{ border: 0, background: 'transparent', color: '#8EB6FF', fontSize: 15, fontWeight: 700, padding: '0 0 0 12px' }}>되돌리기</button>
+        </Toast>
+      )}
     </div>
   )
 }

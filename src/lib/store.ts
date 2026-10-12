@@ -7,6 +7,7 @@ export interface AppState {
   onboarded: boolean
   axes: AxisKey[]
   saved: string[]
+  hidden: string[]
 }
 
 export const emptyProfile = (): Profile => ({
@@ -31,6 +32,7 @@ export const initialState = (): AppState => ({
   onboarded: false,
   axes: ['h', 'f', 'j', 't'],
   saved: [],
+  hidden: [],
 })
 
 export function loadState(): AppState {

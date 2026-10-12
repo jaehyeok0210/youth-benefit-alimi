@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { AXES, DISCLAIMER, axisOf } from '../lib/constants'
 import { ageOf, dday, won } from '../lib/judge'
 import type { AxisKey, Dataset, Judgement, Policy, Profile } from '../lib/types'
@@ -10,9 +10,14 @@ type Ctx = {
   judged: Record<string, Judgement>
   saved: string[]
   toggleSave: (id: string) => void
+  hidden: string[]
+  hide: (id: string) => void
+  unhide: (id: string) => void
 }
 
 const visible = (c: Ctx) => c.data.policies.filter((p) => c.judged[p.id]?.status !== 'fail')
+/** 목록·개수용: 받을 수 있는 정책 중 관심없음으로 숨긴 것 제외 */
+const shown = (c: Ctx) => visible(c).filter((p) => !c.hidden.includes(p.id))
 
 /** 마감 순 정렬: 진행 중(날짜) → 상시 → 마감 지남 */
 const byDeadline = (base: Date) => (a: Policy, b: Policy) => {
@@ -37,7 +42,7 @@ export function conditionText(p: Profile, base: Date) {
 
 /* ---------- 02 결과 요약 ---------- */
 export function Summary({ ctx, axes, setAxes, onBuild }: { ctx: Ctx; axes: AxisKey[]; setAxes: (a: AxisKey[]) => void; onBuild: () => void }) {
-  const list = visible(ctx)
+  const list = shown(ctx)
   const ok = list.filter((p) => ctx.judged[p.id].status === 'ok').length
   const parentUnknown = !ctx.profile.father.type || ctx.profile.father.type === '모름' || ctx.profile.mother.type === '모름'
   return (
@@ -79,7 +84,7 @@ export function Summary({ ctx, axes, setAxes, onBuild }: { ctx: Ctx; axes: AxisK
 
 /* ---------- 04 홈 ---------- */
 export function Home({ ctx, axes }: { ctx: Ctx; axes: AxisKey[] }) {
-  const list = visible(ctx)
+  const list = shown(ctx)
   return (
     <div className="page">
       <div className="top" style={{ paddingLeft: 20 }}>
@@ -121,8 +126,9 @@ export function Home({ ctx, axes }: { ctx: Ctx; axes: AxisKey[] }) {
 export function AxisList({ ctx, axis }: { ctx: Ctx; axis: AxisKey }) {
   const a = axisOf(axis)
   const base = ctx.data.standards.baseDate
-  const items = visible(ctx).filter((p) => p.axis === axis).sort(byDeadline(base))
+  const items = shown(ctx).filter((p) => p.axis === axis).sort(byDeadline(base))
   const ok = items.filter((p) => ctx.judged[p.id].status === 'ok').length
+  const [openId, setOpenId] = useState<string | null>(null)
   return (
     <div className="page">
       <TopBar onBack={() => go('/home')} />
@@ -140,21 +146,79 @@ export function AxisList({ ctx, axis }: { ctx: Ctx; axis: AxisKey }) {
       <div style={{ padding: '20px 20px 0', fontSize: 14, fontWeight: 600, color: '#4E5968' }}>마감 빠른 순 · {items.length}개</div>
       <div style={{ flex: 1, padding: '0 16px 0 20px' }}>
         {items.length === 0 && <div className="muted" style={{ padding: '40px 0', textAlign: 'center', fontSize: 15 }}>이 분야에서 지금 받을 수 있는 정책이 없어요</div>}
-        {items.map((p) => {
-          const on = ctx.saved.includes(p.id)
-          return (
-            <div key={p.id} className="row-item">
-              <a href={`#/p/${p.id}`} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><DdayChip d={dday(p.deadline, base)} deadline={p.deadline} /><StatusChip j={ctx.judged[p.id]} axis={axis} /></div>
-                <div style={{ fontSize: 17, fontWeight: 600 }}>{p.name}</div>
-                <div className="muted" style={{ fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.org} · {p.benefit}</div>
-              </a>
-              <button className="ib" aria-label={on ? '저장 취소' : '저장하기'} aria-pressed={on} onClick={() => ctx.toggleSave(p.id)}>{Icon.bookmark(on)}</button>
-            </div>
-          )
-        })}
+        {items.map((p) => (
+          <SwipeRow key={p.id} open={openId === p.id} setOpen={(o) => setOpenId(o ? p.id : null)} onHide={() => { setOpenId(null); ctx.hide(p.id) }}>
+            <a href={`#/p/${p.id}`} draggable={false} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><DdayChip d={dday(p.deadline, base)} deadline={p.deadline} /><StatusChip j={ctx.judged[p.id]} axis={axis} /></div>
+              <div style={{ fontSize: 17, fontWeight: 600 }}>{p.name}</div>
+              <div className="muted" style={{ fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.org} · {p.benefit}</div>
+            </a>
+            <button className="ib" aria-label={ctx.saved.includes(p.id) ? '저장 취소' : '저장하기'} aria-pressed={ctx.saved.includes(p.id)} onClick={() => ctx.toggleSave(p.id)}>{Icon.bookmark(ctx.saved.includes(p.id))}</button>
+          </SwipeRow>
+        ))}
+        {items.length > 0 && <div className="muted" style={{ fontSize: 12, textAlign: 'center', padding: '14px 0 20px' }}>관심 없는 정책은 왼쪽으로 밀어서 숨길 수 있어요</div>}
       </div>
       <Tabs active="list" axis={axis} />
+    </div>
+  )
+}
+
+const ACT_W = 96
+
+/** 오른쪽에서 왼쪽으로 밀면 '관심없음' 버튼이 나오는 줄 */
+function SwipeRow({ children, open, setOpen, onHide }: { children: ReactNode; open: boolean; setOpen: (o: boolean) => void; onHide: () => void }) {
+  const start = useRef<{ x: number; y: number; base: number; locked: null | 'x' | 'y' } | null>(null)
+  const moved = useRef(false)
+  const [dx, setDx] = useState<number | null>(null)
+  const pos = dx ?? (open ? -ACT_W : 0)
+  return (
+    <div className="swipe">
+      <button className="act" onClick={onHide} tabIndex={open ? 0 : -1} aria-hidden={!open}>관심없음</button>
+      <div
+        className={`front${dx != null ? ' dragging' : ''}`}
+        style={{ transform: `translateX(${pos}px)` }}
+        onDragStart={(e) => e.preventDefault()}
+        onPointerDown={(e) => {
+          start.current = { x: e.clientX, y: e.clientY, base: open ? -ACT_W : 0, locked: null }
+          moved.current = false
+        }}
+        onPointerMove={(e) => {
+          const st = start.current
+          if (!st) return
+          const mx = e.clientX - st.x
+          const my = e.clientY - st.y
+          if (!st.locked) {
+            if (Math.abs(mx) < 6 && Math.abs(my) < 6) return
+            st.locked = Math.abs(mx) > Math.abs(my) ? 'x' : 'y'
+            if (st.locked === 'x') (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+          }
+          if (st.locked !== 'x') return
+          moved.current = true
+          setDx(Math.max(-ACT_W - 24, Math.min(0, st.base + mx)))
+        }}
+        onPointerUp={() => {
+          if (start.current?.locked === 'x' && dx != null) setOpen(dx < -ACT_W / 2)
+          start.current = null
+          setDx(null)
+        }}
+        onPointerCancel={() => {
+          start.current = null
+          setDx(null)
+        }}
+        onClickCapture={(e) => {
+          if (moved.current) {
+            e.preventDefault()
+            e.stopPropagation()
+            moved.current = false
+          } else if (open) {
+            e.preventDefault()
+            e.stopPropagation()
+            setOpen(false)
+          }
+        }}
+      >
+        {children}
+      </div>
     </div>
   )
 }
@@ -183,6 +247,7 @@ export function Detail({ ctx, id }: { ctx: Ctx; id: string }) {
   const j = ctx.judged[p.id]
   const base = ctx.data.standards.baseDate
   const on = ctx.saved.includes(p.id)
+  const isHidden = ctx.hidden.includes(p.id)
   const mine = new Set(visible(ctx).map((x) => x.id))
   const rels = ctx.data.relations
     .filter((r) => (r.a === p.id && mine.has(r.b)) || (r.b === p.id && mine.has(r.a)))
@@ -205,7 +270,14 @@ export function Detail({ ctx, id }: { ctx: Ctx; id: string }) {
           <div style={{ display: 'flex', gap: 16 }}><span className="muted" style={{ width: 64, flexShrink: 0 }}>접수 일정</span><span>{p.realSchedule}</span></div>
           {p.memo && <div style={{ display: 'flex', gap: 16 }}><span className="muted" style={{ width: 64, flexShrink: 0 }}>참고</span><span className="muted">{p.memo}</span></div>}
         </div>
-        <button className="cta2" style={{ marginTop: 8, height: 48 }} aria-pressed={on} onClick={() => ctx.toggleSave(p.id)}>{Icon.bookmark(on)}{on ? '저장됨' : '저장하기'}</button>
+        {isHidden ? (
+          <button className="cta2" style={{ marginTop: 8, height: 48 }} onClick={() => ctx.unhide(p.id)}>관심없음 취소</button>
+        ) : (
+          <>
+            <button className="cta2" style={{ marginTop: 8, height: 48 }} aria-pressed={on} onClick={() => ctx.toggleSave(p.id)}>{Icon.bookmark(on)}{on ? '저장됨' : '저장하기'}</button>
+            <button style={{ height: 44, border: 0, background: 'transparent', fontSize: 15, fontWeight: 500, color: '#8B95A1' }} onClick={() => { ctx.hide(p.id); back(`/axis/${p.axis}`) }}>관심없음</button>
+          </>
+        )}
       </div>
       <div className="sep" />
       <div className="pad" style={{ padding: 24 }}>
@@ -397,6 +469,21 @@ export function Me({ ctx, onRebuild, onReset }: { ctx: Ctx; onRebuild: () => voi
             ))}
           </div>
         ))}
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#8B95A1', padding: '8px 0 2px' }}>관심없음으로 숨긴 정책 {ctx.hidden.length}개</div>
+          {ctx.hidden.length === 0 && <div className="muted" style={{ fontSize: 14, padding: '12px 0' }}>목록에서 왼쪽으로 밀거나 상세에서 관심없음을 누르면 여기 모여요</div>}
+          {ctx.hidden.map((id) => {
+            const hp = ctx.data.policies.find((x) => x.id === id)
+            if (!hp) return null
+            return (
+              <div key={id} style={{ minHeight: 56, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span className={`chip c-${hp.axis}`}>{axisOf(hp.axis).name}</span>
+                <span style={{ flex: 1, fontSize: 15, fontWeight: 500 }}>{hp.name}</span>
+                <button onClick={() => ctx.unhide(id)} style={{ height: 36, padding: '0 12px', border: 0, borderRadius: 10, background: '#F2F4F6', fontSize: 14, fontWeight: 600 }}>되돌리기</button>
+              </div>
+            )
+          })}
+        </div>
         <div className="muted" style={{ fontSize: 13, lineHeight: 1.6 }}>부모 소득을 '모름'으로 두면 해당 정책에 '부모 소득 확인 필요'가 표시돼요.</div>
       </div>
       <div className="bottom" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
