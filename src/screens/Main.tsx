@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { AXES, DISCLAIMER, axisOf } from '../lib/constants'
-import { ageOf, dday, won } from '../lib/judge'
+import { ageOf, dday, matchComplexes, won } from '../lib/judge'
 import type { AxisKey, Dataset, Judgement, Policy, Profile } from '../lib/types'
 import { DdayChip, Icon, StatusChip, TopBar, back, go } from '../ui'
 
@@ -32,6 +32,7 @@ export function conditionText(p: Profile, base: Date) {
   return [
     `만 ${ageOf(p, base) ?? '?'}세`,
     `${p.sido} ${p.sigungu}`.trim(),
+    `희망 ${p.wishAny ? '수도권 전체' : p.wish.map((w) => w.split(' ')[1]).join('·') || '-'}`,
     p.married ? '기혼' : '미혼',
     p.homeless ? '무주택' : '주택 있음',
     p.job === '재직' ? `${p.company ?? ''} 재직` : '구직 중',
@@ -71,6 +72,7 @@ export function Summary({ ctx, axes, setAxes, onBuild }: { ctx: Ctx; axes: AxisK
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 20 }}>
           {conditionText(ctx.profile, ctx.data.standards.baseDate).map((t) => <span key={t} className="chip c-gray">{t}</span>)}
+          <span className="chip c-gray">희망 {ctx.profile.wishAny ? '수도권 전체' : ctx.profile.wish.length > 1 ? `${ctx.profile.wish[0].split(' ')[1]} 외 ${ctx.profile.wish.length - 1}곳` : ctx.profile.wish[0]?.split(' ')[1]}</span>
           {parentUnknown && <span className="chip c-check">부모 소득 모름</span>}
         </div>
       </div>
@@ -151,7 +153,7 @@ export function AxisList({ ctx, axis }: { ctx: Ctx; axis: AxisKey }) {
             <a href={`#/p/${p.id}`} draggable={false} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><DdayChip d={dday(p.deadline, base)} deadline={p.deadline} /><StatusChip j={ctx.judged[p.id]} axis={axis} /></div>
               <div style={{ fontSize: 17, fontWeight: 600 }}>{p.name}</div>
-              <div className="muted" style={{ fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.org} · {p.benefit}</div>
+              <div className="muted" style={{ fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.org} · {p.regionBasis === '희망 지역' ? complexText(ctx, p.id) : p.benefit}</div>
             </a>
             <button className="ib" aria-label={ctx.saved.includes(p.id) ? '저장 취소' : '저장하기'} aria-pressed={ctx.saved.includes(p.id)} onClick={() => ctx.toggleSave(p.id)}>{Icon.bookmark(ctx.saved.includes(p.id))}</button>
           </SwipeRow>
@@ -161,6 +163,12 @@ export function AxisList({ ctx, axis }: { ctx: Ctx; axis: AxisKey }) {
       <Tabs active="list" axis={axis} />
     </div>
   )
+}
+
+const complexText = (ctx: Ctx, id: string) => {
+  const cs = matchComplexes(ctx.data, id, ctx.profile)
+  const gus = [...new Set(cs.map((c) => c.sigungu))]
+  return `${gus.slice(0, 2).join('·')}${gus.length > 2 ? ` 외 ${gus.length - 2}곳` : ''} 단지 ${cs.length}곳`
 }
 
 const ACT_W = 96
@@ -248,6 +256,7 @@ export function Detail({ ctx, id }: { ctx: Ctx; id: string }) {
   const base = ctx.data.standards.baseDate
   const on = ctx.saved.includes(p.id)
   const isHidden = ctx.hidden.includes(p.id)
+  const complexes = p.regionBasis === '희망 지역' ? matchComplexes(ctx.data, p.id, ctx.profile) : []
   const mine = new Set(visible(ctx).map((x) => x.id))
   const rels = ctx.data.relations
     .filter((r) => (r.a === p.id && mine.has(r.b)) || (r.b === p.id && mine.has(r.a)))
@@ -279,6 +288,29 @@ export function Detail({ ctx, id }: { ctx: Ctx; id: string }) {
           </>
         )}
       </div>
+      {p.regionBasis === '희망 지역' && (
+        <>
+          <div className="sep" />
+          <div className="pad" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <h2 style={{ fontSize: 19, fontWeight: 700 }}>희망 지역 공고</h2>
+            <div className="muted" style={{ fontSize: 14, marginBottom: 6 }}>{ctx.profile.wishAny ? '수도권 전체' : ctx.profile.wish.join(', ')}에 나온 단지예요</div>
+            {complexes.map((c) => {
+              const cd = dday(c.deadline, base)
+              return (
+                <a key={c.id} href={c.url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 0', borderBottom: '1px solid #F2F4F6' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}><DdayChip d={cd} deadline={c.deadline || '상시'} /><span className="muted" style={{ fontSize: 13 }}>{c.sido} {c.sigungu}</span></div>
+                    <div style={{ fontSize: 15, fontWeight: 600 }}>{c.name}</div>
+                    <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{[c.supply, c.terms, c.start && c.deadline ? `접수 ${c.start.slice(5).replace('-', '/')} ~ ${c.deadline.slice(5).replace('-', '/')}` : ''].filter(Boolean).join(' · ')}</div>
+                  </div>
+                  {Icon.chev}
+                </a>
+              )
+            })}
+            {complexes.some((c) => c.note.includes('샘플')) && <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>지금 보이는 단지는 화면 확인용 샘플이에요</div>}
+          </div>
+        </>
+      )}
       <div className="sep" />
       <div className="pad" style={{ padding: 24 }}>
         <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>내 자격 판정</h2>
@@ -446,11 +478,11 @@ export function Me({ ctx, onRebuild, onReset }: { ctx: Ctx; onRebuild: () => voi
   const [confirm, setConfirm] = useState(false)
   const ins = (x: Profile['father']) => (x.type === '직장' || x.type === '지역' ? `${x.type} · 월 ${(x.premium ?? 0).toLocaleString()}원` : x.type ?? '-')
   const groups: { title: string; rows: [string, string, number][] }[] = [
-    { title: '기본', rows: [['생년월일', `${p.birthYear}.${String(p.birthMonth).padStart(2, '0')} (만 ${ageOf(p, ctx.data.standards.baseDate)}세)`, 1], ['거주지', `${p.sido} ${p.sigungu}`, 2], ['혼인', p.married ? '기혼' : '미혼', 3]] },
-    { title: '주거', rows: [['주택 소유', p.homeless ? '무주택' : '주택 있음', 4], ['청약통장', p.subscription ? '있음' : '없음', 8]] },
-    { title: '고용·소득', rows: [['상태', p.job === '재직' ? `재직 · ${p.company}` : '구직 중', 5], ['세전 총급여', `${(p.gross ?? 0).toLocaleString()}만 원`, 6]] },
-    { title: '부모 소득', rows: [['원가구 인원', `${p.household}명`, 7], ['아버지', ins(p.father), 7], ['어머니', ins(p.mother), 7]] },
-    { title: '해당 항목', rows: [['선택', p.vulnerable.join(', ') || '-', 9]] },
+    { title: '기본', rows: [['생년월일', `${p.birthYear}.${String(p.birthMonth).padStart(2, '0')} (만 ${ageOf(p, ctx.data.standards.baseDate)}세)`, 1], ['거주지', `${p.sido} ${p.sigungu}`, 2], ['혼인', p.married ? '기혼' : '미혼', 4]] },
+    { title: '주거', rows: [['입주 희망 지역', p.wishAny ? '상관없음 (수도권 전체)' : p.wish.join(', ') || '-', 3], ['주택 소유', p.homeless ? '무주택' : '주택 있음', 5], ['청약통장', p.subscription ? '있음' : '없음', 9]] },
+    { title: '고용·소득', rows: [['상태', p.job === '재직' ? `재직 · ${p.company}` : '구직 중', 6], ['세전 총급여', `${(p.gross ?? 0).toLocaleString()}만 원`, 7]] },
+    { title: '부모 소득', rows: [['원가구 인원', `${p.household}명`, 8], ['아버지', ins(p.father), 8], ['어머니', ins(p.mother), 8]] },
+    { title: '해당 항목', rows: [['선택', p.vulnerable.join(', ') || '-', 10]] },
   ]
   return (
     <div className="page">

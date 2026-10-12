@@ -15,6 +15,21 @@ export interface Policy {
   url: string
   source: string
   memo: string
+  regionBasis: '거주지' | '희망 지역'
+}
+
+export interface Complex {
+  id: string
+  policyId: string
+  name: string
+  sido: string
+  sigungu: string
+  start: string
+  deadline: string
+  supply: string
+  terms: string
+  url: string
+  note: string
 }
 
 export interface Eligibility {
@@ -67,6 +82,7 @@ export interface Dataset {
   eligibility: Record<string, Eligibility>
   relations: Relation[]
   standards: Standards
+  complexes: Complex[]
   source: 'sheet' | 'fallback'
 }
 
@@ -77,6 +93,8 @@ export interface Profile {
   birthMonth: number | null
   sido: string
   sigungu: string
+  wish: string[] // '서울 동작구' 형식
+  wishAny: boolean
   married: boolean | null
   homeless: boolean | null
   job: '재직' | '구직' | null

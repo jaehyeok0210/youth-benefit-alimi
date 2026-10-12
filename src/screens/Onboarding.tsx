@@ -1,9 +1,10 @@
+import { useState } from 'react'
 import { SIDO, VULNERABLE } from '../lib/constants'
 import type { ReactNode } from 'react'
 import type { InsuranceType, Profile } from '../lib/types'
 import { Icon } from '../ui'
 
-export const STEP_COUNT = 9
+export const STEP_COUNT = 10
 type Props = { profile: Profile; step: number; edit: boolean; onChange: (p: Profile) => void; onNext: () => void; onBack: () => void }
 
 const YEARS = Array.from({ length: 30 }, (_, i) => 2008 - i) // 1979~2008년생
@@ -50,22 +51,24 @@ export function stepValid(p: Profile, step: number): boolean {
   switch (step) {
     case 1: return !!p.birthYear && !!p.birthMonth
     case 2: return !!p.sido && !!p.sigungu
-    case 3: return p.married !== null
-    case 4: return p.homeless !== null
-    case 5: return p.job === '구직' || (p.job === '재직' && !!p.company)
-    case 6: return p.gross !== null
-    case 7: {
+    case 3: return p.wishAny || p.wish.length > 0
+    case 4: return p.married !== null
+    case 5: return p.homeless !== null
+    case 6: return p.job === '구직' || (p.job === '재직' && !!p.company)
+    case 7: return p.gross !== null
+    case 8: {
       const ok = (x: Profile['father']) => !!x.type && (x.type === '피부양자' || x.type === '모름' || (x.premium ?? 0) > 0)
       return ok(p.father) && ok(p.mother)
     }
-    case 8: return p.subscription !== null
-    case 9: return p.vulnerable.length > 0
+    case 9: return p.subscription !== null
+    case 10: return p.vulnerable.length > 0
   }
   return true
 }
 
 export default function Onboarding({ profile: p, step, edit, onChange, onNext, onBack }: Props) {
   const set = (patch: Partial<Profile>) => onChange({ ...p, ...patch })
+  const [wishTab, setWishTab] = useState('')
   let title: ReactNode = ''
   let desc: ReactNode = null
   let body: ReactNode = null
@@ -110,13 +113,50 @@ export default function Onboarding({ profile: p, step, edit, onChange, onNext, o
       </div>
     )
   } else if (step === 3) {
+    title = <>입주하고 싶은 지역을<br />골라주세요</>
+    desc = '임대주택·공공분양은 이 지역에 나온 공고만 보여줘요. 여러 곳을 고를 수 있어요.'
+    const tab = wishTab || p.sido || '서울'
+    const toggleGu = (g: string) => {
+      const k = `${tab} ${g}`
+      set({ wishAny: false, wish: p.wish.includes(k) ? p.wish.filter((x) => x !== k) : [...p.wish, k] })
+    }
+    body = (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <button className={`opt left${p.wishAny ? ' on' : ''}`} aria-pressed={p.wishAny} onClick={() => set({ wishAny: !p.wishAny, wish: [] })}>
+          <span className={`box${p.wishAny ? ' on' : ''}`} style={{ borderRadius: 11 }}>{p.wishAny && Icon.check('#191F28')}</span>
+          <span>상관없어요 (수도권 전체)</span>
+        </button>
+        <div className="seg" style={{ gridTemplateColumns: 'repeat(3, minmax(0,1fr))' }}>
+          {Object.keys(SIDO).map((sd) => {
+            const n = p.wish.filter((w) => w.startsWith(sd + ' ')).length
+            return (
+              <button key={sd} className={`opt${tab === sd ? ' on' : ''}`} style={{ minHeight: 44 }} onClick={() => setWishTab(sd)}>
+                {sd}{n > 0 ? ` ${n}` : ''}
+              </button>
+            )
+          })}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {SIDO[tab].map((g) => {
+            const on = p.wish.includes(`${tab} ${g}`)
+            return (
+              <button key={g} aria-pressed={on} onClick={() => toggleGu(g)} style={{ height: 40, padding: '0 14px', borderRadius: 20, border: 0, fontSize: 15, background: on ? '#191F28' : '#F2F4F6', color: on ? '#fff' : '#4E5968', fontWeight: on ? 600 : 400 }}>
+                {g}
+              </button>
+            )
+          })}
+        </div>
+        {p.wish.length > 0 && <div className="muted" style={{ fontSize: 13 }}>선택: {p.wish.join(', ')}</div>}
+      </div>
+    )
+  } else if (step === 4) {
     title = <>결혼하셨나요?</>
     body = <div className="seg"><Opt value={false} cur={p.married} set={(v) => set({ married: v })} label="미혼" /><Opt value={true} cur={p.married} set={(v) => set({ married: v })} label="기혼" /></div>
-  } else if (step === 4) {
+  } else if (step === 5) {
     title = <>본인 명의 주택이<br />있나요?</>
     desc = '세대원 전원 기준이 필요한 정책은 상세 화면에서 따로 알려줘요'
     body = <div className="seg"><Opt value={true} cur={p.homeless} set={(v) => set({ homeless: v })} label="없어요 (무주택)" /><Opt value={false} cur={p.homeless} set={(v) => set({ homeless: v })} label="있어요" /></div>
-  } else if (step === 5) {
+  } else if (step === 6) {
     title = <>지금 일하고 있나요?</>
     body = (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -136,7 +176,7 @@ export default function Onboarding({ profile: p, step, edit, onChange, onNext, o
         )}
       </div>
     )
-  } else if (step === 6) {
+  } else if (step === 7) {
     title = <>작년 세전 총급여는<br />얼마인가요?</>
     desc = p.job === '구직' ? '소득이 없으면 0을, 아르바이트 소득이 있으면 그 금액을 적어주세요' : '원천징수영수증의 총급여(비과세 제외)를 적어주세요'
     body = (
@@ -146,7 +186,7 @@ export default function Onboarding({ profile: p, step, edit, onChange, onNext, o
         <span className="unit">만 원</span>
       </div>
     )
-  } else if (step === 7) {
+  } else if (step === 8) {
     title = <>부모님 건강보험료를<br />한 분씩 알려주세요</>
     desc = <>합산과 기준표 선택은 앱이 알아서 해요.<br />The건강보험 앱이나 고지서에서 볼 수 있어요.</>
     body = (
@@ -164,10 +204,10 @@ export default function Onboarding({ profile: p, step, edit, onChange, onNext, o
         <div style={{ fontSize: 13, lineHeight: 1.6 }} className="muted">한 분이라도 '모름'이면 조건을 충족한 것으로 보고 '부모 소득 확인 필요'를 표시해요. 해당하지 않으면(안 계심 등) 피부양자를 골라주세요.</div>
       </div>
     )
-  } else if (step === 8) {
+  } else if (step === 9) {
     title = <>청약통장이 있나요?</>
     body = <div className="seg"><Opt value={true} cur={p.subscription} set={(v) => set({ subscription: v })} label="있어요" /><Opt value={false} cur={p.subscription} set={(v) => set({ subscription: v })} label="없어요" /></div>
-  } else if (step === 9) {
+  } else if (step === 10) {
     title = <>해당되는 항목을<br />모두 골라주세요</>
     desc = '일부 정책은 우선 선정되거나 소득 심사 없이 신청할 수 있어요.'
     const toggle = (v: string) => {

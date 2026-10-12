@@ -1,4 +1,4 @@
-import type { Dataset, Eligibility, Judgement, JudgeRow, Policy, Profile, Standards } from './types'
+import type { Complex, Dataset, Eligibility, Judgement, JudgeRow, Policy, Profile, Standards } from './types'
 
 export const won = (n: number) => {
   if (n >= 100000000) {
@@ -66,8 +66,13 @@ export function judge(policy: Policy, el: Eligibility | undefined, p: Profile, d
     fail = true
   }
 
-  // 지역
-  if (policy.region !== '전국') {
+  // 지역: 임대주택·분양은 희망 지역의 공고 단지 기준, 나머지는 거주지 기준
+  if (policy.regionBasis === '희망 지역') {
+    const cs = matchComplexes(d, policy.id, p)
+    if (!cs.length) bad()
+    const gus = [...new Set(cs.map((c) => c.sigungu))]
+    rows.push({ label: '희망 지역 공고', mine: `${gus.slice(0, 3).join(', ')}${gus.length > 3 ? ` 외 ${gus.length - 3}곳` : ''}에 접수 중이거나 예정인 단지 ${cs.length}곳`, result: 'ok' })
+  } else if (policy.region !== '전국') {
     if (p.sido !== policy.region) bad()
     rows.push({ label: `${policy.region} 거주`, mine: `내 조건: ${p.sido} ${p.sigungu}`.trim(), result: 'ok' })
   }
@@ -191,6 +196,28 @@ export function judge(policy: Policy, el: Eligibility | undefined, p: Profile, d
 
   const status = fail ? 'fail' : rows.some((r) => r.result === 'check') ? 'check' : 'ok'
   return { status, rows, flags }
+}
+
+/** 희망 지역에 있는, 아직 마감되지 않은 공고 단지 (마감 빠른 순) */
+export function matchComplexes(d: Dataset, policyId: string, p: Profile): Complex[] {
+  const base = d.standards.baseDate
+  return d.complexes
+    .filter((c) => c.policyId === policyId)
+    .filter((c) => p.wishAny || p.wish.includes(`${c.sido} ${c.sigungu}`))
+    .filter((c) => { const dd = dday(c.deadline, base); return dd == null || dd >= 0 })
+    .sort((a, b) => (a.deadline < b.deadline ? -1 : 1))
+}
+
+/** 희망 지역 정책은 가장 빨리 마감되는 단지의 접수 기간을 정책 일정으로 사용 */
+export function withComplexDates(d: Dataset, p: Profile): Dataset {
+  return {
+    ...d,
+    policies: d.policies.map((pol) => {
+      if (pol.regionBasis !== '희망 지역') return pol
+      const c = matchComplexes(d, pol.id, p)[0]
+      return c ? { ...pol, deadline: c.deadline || pol.deadline, start: c.start || pol.start } : pol
+    }),
+  }
 }
 
 export function judgeAll(d: Dataset, p: Profile) {

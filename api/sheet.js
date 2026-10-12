@@ -1,7 +1,7 @@
 // Vercel 서버리스 함수: 구글 시트 탭을 CSV로 가져와 그대로 돌려줘요.
 // 시트는 "링크가 있는 모든 사용자 보기"로 공유돼 있어야 해요.
 const SHEET_ID = '1BlsJOfkcSD0y_8IwpTVq10YqkH8U6Ugyx1MlEslxgoU'
-const GID = { policies: 1, eligibility: 2, relations: 3, standards: 4 }
+const GID = { policies: 1, eligibility: 2, relations: 3, standards: 4, complexes: 5 }
 
 export default async function handler(req, res) {
   const tab = String(req.query.tab || '')

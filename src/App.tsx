@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { loadData } from './lib/data'
-import { judgeAll } from './lib/judge'
+import { judgeAll, withComplexDates } from './lib/judge'
 import { clearState, initialState, loadState, saveState, type AppState } from './lib/store'
 import type { AxisKey, Dataset } from './lib/types'
 import Onboarding, { STEP_COUNT } from './screens/Onboarding'
@@ -34,7 +34,8 @@ export default function App() {
   }, [])
   useEffect(() => saveState(state), [state])
 
-  const judged = useMemo(() => (data && state.onboarded ? judgeAll(data, state.profile) : {}), [data, state.profile, state.onboarded])
+  const view = useMemo(() => (data && state.onboarded ? withComplexDates(data, state.profile) : data), [data, state.profile, state.onboarded])
+  const judged = useMemo(() => (view && state.onboarded ? judgeAll(view, state.profile) : {}), [view, state.profile, state.onboarded])
   const toggleSave = useCallback(
     (id: string) => setState((s) => ({ ...s, saved: s.saved.includes(id) ? s.saved.filter((x) => x !== id) : [...s.saved, id] })),
     [],
@@ -80,8 +81,8 @@ export default function App() {
   }
   const step = Math.min(STEP_COUNT, Math.max(1, Number(parts[1]) || 1))
   const needsData = !['', 'start', 'edit'].includes(route)
-  if (needsData && !data) return <div className="app"><Splash /></div>
-  const ctx = data ? { data, profile: state.profile, judged, saved: state.saved, toggleSave, hidden: state.hidden, hide, unhide: toggleHide } : null!
+  if (needsData && !view) return <div className="app"><Splash /></div>
+  const ctx = view ? { data: view, profile: state.profile, judged, saved: state.saved, toggleSave, hidden: state.hidden, hide, unhide: toggleHide } : null!
 
   let screen: ReactNode = null
   if (route === '') {

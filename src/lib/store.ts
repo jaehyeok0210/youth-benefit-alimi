@@ -15,6 +15,8 @@ export const emptyProfile = (): Profile => ({
   birthMonth: null,
   sido: '',
   sigungu: '',
+  wish: [],
+  wishAny: false,
   married: null,
   homeless: null,
   job: null,
@@ -40,7 +42,9 @@ export function loadState(): AppState {
     const raw = localStorage.getItem(KEY)
     if (!raw) return initialState()
     const s = JSON.parse(raw)
-    return { ...initialState(), ...s, profile: { ...emptyProfile(), ...s.profile } }
+    // 희망 지역 문항이 생기기 전에 저장된 프로필은 '상관없음'으로 간주
+    const migrated = s.profile && !('wish' in s.profile) ? { wishAny: true } : {}
+    return { ...initialState(), ...s, profile: { ...emptyProfile(), ...s.profile, ...migrated } }
   } catch {
     return initialState()
   }
