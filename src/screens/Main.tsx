@@ -72,7 +72,6 @@ export function Summary({ ctx, axes, setAxes, onBuild }: { ctx: Ctx; axes: AxisK
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 20 }}>
           {conditionText(ctx.profile, ctx.data.standards.baseDate).map((t) => <span key={t} className="chip c-gray">{t}</span>)}
-          <span className="chip c-gray">희망 {ctx.profile.wishAny ? '수도권 전체' : ctx.profile.wish.length > 1 ? `${ctx.profile.wish[0].split(' ')[1]} 외 ${ctx.profile.wish.length - 1}곳` : ctx.profile.wish[0]?.split(' ')[1]}</span>
           {parentUnknown && <span className="chip c-check">부모 소득 모름</span>}
         </div>
       </div>
