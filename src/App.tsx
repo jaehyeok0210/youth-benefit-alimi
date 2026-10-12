@@ -5,7 +5,8 @@ import { clearState, initialState, loadState, saveState, type AppState } from '.
 import type { AxisKey, Dataset } from './lib/types'
 import Onboarding, { STEP_COUNT } from './screens/Onboarding'
 import { AxisList, Detail, Home, Me, Saved, Summary } from './screens/Main'
-import { Loading, Toast, back, go } from './ui'
+import Intro, { Splash } from './screens/Intro'
+import { Loading, Toast, go } from './ui'
 
 function useHash() {
   const [hash, setHash] = useState(() => window.location.hash.slice(1) || '/')
@@ -46,25 +47,27 @@ export default function App() {
   }, [loading])
 
   if (error) return <div className="app"><div className="pad" style={{ paddingTop: 80 }}><h1 className="h1">데이터를 불러오지 못했어요</h1><p className="desc">{error}</p></div></div>
-  if (!data) return <div className="app"><Loading onDone={() => {}} /></div>
-
   const [path, query] = hash.split('?')
   const parts = path.split('/').filter(Boolean)
   const route = parts[0] || ''
 
-  let screen: ReactNode = null
-  const needsProfile = !['start', ''].includes(route)
-  if (!state.onboarded && needsProfile && route !== 'summary') {
-    go('/start/1')
+  // 첫 화면·질문은 데이터 없이도 바로 보여줌
+  if (!state.onboarded && !['', 'start', 'summary'].includes(route)) {
+    go('/')
     return null
   }
-
-  const ctx = { data, profile: state.profile, judged, saved: state.saved, toggleSave }
-  const step = Math.min(STEP_COUNT, Math.max(1, Number(parts[1]) || 1))
-
-  if (route === '' ) {
-    go(state.onboarded ? '/home' : '/start/1')
+  if (route === '' && state.onboarded) {
+    go('/home')
     return null
+  }
+  const step = Math.min(STEP_COUNT, Math.max(1, Number(parts[1]) || 1))
+  const needsData = !['', 'start', 'edit'].includes(route)
+  if (needsData && !data) return <div className="app"><Splash /></div>
+  const ctx = data ? { data, profile: state.profile, judged, saved: state.saved, toggleSave } : null!
+
+  let screen: ReactNode = null
+  if (route === '') {
+    screen = <Intro onStart={() => go('/start/1')} />
   } else if (route === 'start' || route === 'edit') {
     const edit = route === 'edit'
     screen = (
@@ -73,7 +76,7 @@ export default function App() {
         step={step}
         edit={edit}
         onChange={(profile) => setState((s) => ({ ...s, profile }))}
-        onBack={() => (edit ? go('/me') : step > 1 ? go(`/start/${step - 1}`) : back('/start/1'))}
+        onBack={() => (edit ? go('/me') : step > 1 ? go(`/start/${step - 1}`) : go('/'))}
         onNext={() => {
           if (edit) return go('/me')
           if (step < STEP_COUNT) return go(`/start/${step + 1}`)
@@ -103,7 +106,7 @@ export default function App() {
         onReset={() => {
           clearState()
           setState(initialState())
-          go('/start/1')
+          go('/')
         }}
       />
     )
