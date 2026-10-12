@@ -16,6 +16,7 @@ export interface Policy {
   source: string
   memo: string
   regionBasis: '거주지' | '희망 지역'
+  total: number | null // 지원 총액(만 원, 최대)
 }
 
 export interface Complex {
@@ -88,6 +89,7 @@ export interface Standards {
   employeeRate: number
   regionalRate: number
   baseDate: Date
+  values: Record<string, string> // 기준값 탭의 나머지 항목 (항목명 → 값)
 }
 
 export interface Dataset {

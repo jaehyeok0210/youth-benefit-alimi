@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { AXES, DISCLAIMER, axisOf } from '../lib/constants'
 import { ageOf, dday, matchComplexes, won } from '../lib/judge'
+import { optimizeCombos } from '../lib/optimize'
 import type { AxisKey, Dataset, Judgement, Policy, Profile } from '../lib/types'
 import { DdayChip, Icon, StatusChip, TopBar, back, go } from '../ui'
 
@@ -86,6 +87,7 @@ export function Summary({ ctx, axes, setAxes, onBuild }: { ctx: Ctx; axes: AxisK
 /* ---------- 04 홈 ---------- */
 export function Home({ ctx, axes }: { ctx: Ctx; axes: AxisKey[] }) {
   const list = shown(ctx)
+  const comboCount = optimizeCombos(list, ctx.data.relations).reduce((s, g) => s + g.dropped.length, 0)
   return (
     <div className="page">
       <div className="top" style={{ paddingLeft: 20 }}>
@@ -111,6 +113,15 @@ export function Home({ ctx, axes }: { ctx: Ctx; axes: AxisKey[] }) {
             </a>
           )
         })}
+        {comboCount > 0 && (
+          <a href="#/combo" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', borderRadius: 20, background: '#191F28', color: '#fff' }}>
+            <span style={{ flex: 1 }}>
+              <span style={{ display: 'block', fontSize: 16, fontWeight: 700 }}>겹치는 정책 {comboCount}건, 뭘 고를까요?</span>
+              <span style={{ display: 'block', fontSize: 13, color: '#B0B8C1', marginTop: 2 }}>둘 중 하나만 되는 정책 중 더 많이 받는 쪽을 골라드려요</span>
+            </span>
+            {Icon.chev}
+          </a>
+        )}
         <a href="#/saved" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', borderRadius: 20, background: '#F2F4F6' }}>
           <img src="/assets/bookmark.png" alt="" width={36} height={36} />
           <span style={{ flex: 1, fontSize: 16, fontWeight: 600 }}>저장함</span>
@@ -337,6 +348,11 @@ export function Detail({ ctx, id }: { ctx: Ctx; id: string }) {
                 <a key={i} href={`#/p/${r.other.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 600 }}><span style={{ flex: 1 }}>{r.other.name}</span><span className={`chip c-${r.other.axis}`}>{axisOf(r.other.axis).name}</span></div>
                   <div className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>{r.desc}{r.basis.includes('추정') ? ' (추정)' : ''}</div>
+                  {g.type === '둘 중 하나' && (p.total ?? 0) > 0 && (r.other.total ?? 0) > 0 && (
+                    <div style={{ fontSize: 13, fontWeight: 600, color: (p.total ?? 0) >= (r.other.total ?? 0) ? '#0F766E' : '#E42939' }}>
+                      최대 지원 총액 · 이 정책 {(p.total ?? 0).toLocaleString()}만 원 vs {(r.other.total ?? 0).toLocaleString()}만 원 → {(p.total ?? 0) >= (r.other.total ?? 0) ? '이 정책이 더 커요' : '다른 쪽이 더 커요'}
+                    </div>
+                  )}
                 </a>
               ))}
             </div>
@@ -344,7 +360,12 @@ export function Detail({ ctx, id }: { ctx: Ctx; id: string }) {
         })}
       </div>
       <div className="bottom">
-        {hasCompare ? (
+        {p.id === 'T01' ? (
+          <>
+            <a className="cta" href="#/calc/T01">세액공제 vs 현금영수증 계산하기</a>
+            <a href={p.url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, height: 40, fontSize: 14, color: '#6B7684' }}>{applyHost ? `${applyHost}에서 안내 보기` : '안내 보기'}{Icon.ext}</a>
+          </>
+        ) : hasCompare ? (
           <>
             <a className="cta" href={`#/compare/${p.id}`}>최적 선택지 찾기</a>
             <a href={p.url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, height: 40, fontSize: 14, color: '#6B7684' }}>{applyHost ? `${applyHost}에서 안내 보기` : '안내 보기'}{Icon.ext}</a>

@@ -59,6 +59,7 @@ function toPolicies(rows: string[][]): Policy[] {
       memo: r[11],
       start: date(r[12]) || '상시',
       regionBasis: (r[13] || '').includes('희망') ? '희망 지역' : '거주지',
+      total: num(r[14]),
     }))
 }
 
@@ -103,7 +104,7 @@ function toComplexes(rows: string[][]): Complex[] {
 function toProducts(rows: string[][]): Product[] {
   return rows
     .slice(1)
-    .filter((r) => r[0] && r[1])
+    .filter((r) => r[0] && r[1] && (r[15] || 'Y').trim().toUpperCase() !== 'N')
     .map((r) => ({
       policyId: r[0], org: r[1], name: r[2], base: num(r[3]) ?? 0, max: num(r[4]) ?? 0,
       perks: [[r[5], r[6]], [r[7], r[8]], [r[9], r[10]]].filter(([c]) => c).map(([c, b]) => ({ cond: c.trim(), bonus: num(b) ?? 0 })),
@@ -124,7 +125,9 @@ function toStandards(rows: string[][]): Standards {
   let employeeRate = 0.03595
   let regionalRate = 0.0719
   let baseDate = new Date()
+  const values: Record<string, string> = {}
   for (const r of rows) {
+    if (r[0] && r[1]) values[r[0].trim()] = r[1].trim()
     const n = num(r[0])
     if (n && n >= 1 && n <= 10) {
       const m = num(r[1])
@@ -139,7 +142,7 @@ function toStandards(rows: string[][]): Standards {
       if (/^\d{4}-\d{2}-\d{2}$/.test(d)) baseDate = new Date(d + 'T00:00:00')
     }
   }
-  return { median, urban, employeeRate, regionalRate, baseDate }
+  return { median, urban, employeeRate, regionalRate, baseDate, values }
 }
 
 async function loadSet(get: (k: SheetKey) => Promise<string>): Promise<Omit<Dataset, 'source'>> {
