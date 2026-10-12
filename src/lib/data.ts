@@ -109,6 +109,7 @@ function toProducts(rows: string[][]): Product[] {
       policyId: r[0], org: r[1], name: r[2], base: num(r[3]) ?? 0, max: num(r[4]) ?? 0,
       perks: [[r[5], r[6]], [r[7], r[8]], [r[9], r[10]]].filter(([c]) => c).map(([c, b]) => ({ cond: c.trim(), bonus: num(b) ?? 0 })),
       url: r[11], asOf: date(r[12] || ''), source: r[13] || '', note: r[14] || '',
+      kind: (r[16] || '').trim(), tradeFee: num(r[17]), yearFee: num(r[18]), perk: r[19] || '',
     }))
 }
 

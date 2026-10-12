@@ -44,6 +44,11 @@ export interface Product {
   asOf: string
   source: string
   note: string
+  /** ISA 등 유형으로 고르는 상품: 중개형·신탁형·일임형 */
+  kind: string
+  tradeFee: number | null
+  yearFee: number | null
+  perk: string
 }
 
 export interface Eligibility {

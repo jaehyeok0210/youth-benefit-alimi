@@ -367,7 +367,7 @@ export function Detail({ ctx, id }: { ctx: Ctx; id: string }) {
           </>
         ) : hasCompare ? (
           <>
-            <a className="cta" href={`#/compare/${p.id}`}>최적 선택지 찾기</a>
+            <a className="cta" href={`#/compare/${p.id}`}>{ctx.data.products.some((x) => x.policyId === p.id && x.kind) ? "내 유형 찾고 비교하기" : "최적 선택지 찾기"}</a>
             <a href={p.url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, height: 40, fontSize: 14, color: '#6B7684' }}>{applyHost ? `${applyHost}에서 안내 보기` : '안내 보기'}{Icon.ext}</a>
           </>
         ) : (

@@ -7,6 +7,7 @@ import Onboarding, { STEP_COUNT } from './screens/Onboarding'
 import { AxisList, Detail, Home, Me, Saved, Summary } from './screens/Main'
 import Intro, { Splash } from './screens/Intro'
 import Compare from './screens/Compare'
+import IsaCompare from './screens/Isa'
 import { Combo, RentCalc } from './screens/Optimize'
 import { Loading, Toast, go } from './ui'
 
@@ -121,7 +122,9 @@ export default function App() {
   } else if (route === 'calc') {
     screen = <RentCalc data={ctx.data} profile={state.profile} />
   } else if (route === 'compare') {
-    screen = <Compare data={ctx.data} profile={state.profile} id={parts[1]} />
+    screen = ctx.data.products.some((x) => x.policyId === parts[1] && x.kind)
+      ? <IsaCompare data={ctx.data} profile={state.profile} id={parts[1]} />
+      : <Compare data={ctx.data} profile={state.profile} id={parts[1]} />
   } else if (route === 'saved') {
     const from = new URLSearchParams(query || '').get('from') as AxisKey | null
     screen = <Saved ctx={ctx} from={from ?? undefined} />
