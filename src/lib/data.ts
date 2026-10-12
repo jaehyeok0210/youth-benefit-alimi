@@ -10,7 +10,7 @@ const SHEETS = {
 } as const
 type SheetKey = keyof typeof SHEETS
 
-const AXIS: Record<string, AxisKey> = { 주거: 'h', '금융·자산': 'f', '고용·소득': 'j', 세제: 't', 세금: 't' }
+const AXIS: Record<string, AxisKey> = { 주거: 'h', '금융·자산': 'f', '고용·소득': 'j', '취업·수당': 'j', 세제: 't', 세금: 't' }
 
 const sheetUrl = (tab: string) => `/api/sheet?tab=${tab}`
 

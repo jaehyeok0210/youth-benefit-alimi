@@ -3,7 +3,7 @@ import type { AxisKey } from './types'
 export const AXES: { key: AxisKey; name: string; img: string; desc: string; color: string; bg: string }[] = [
   { key: 'h', name: '주거', img: '/assets/house.png', desc: '임대주택 공고, 공공분양 청약, 전월세 대출·보증', color: '#2563EB', bg: '#EAF1FE' },
   { key: 'f', name: '금융·자산', img: '/assets/money.png', desc: '정부 매칭 적금, 월세 지원금, 전세보증료 지원', color: '#C2410C', bg: '#FDEEE3' },
-  { key: 'j', name: '고용·소득', img: '/assets/briefcase.png', desc: '구직 수당, 직업훈련, 취업·근속 장려금', color: '#0F766E', bg: '#E2F4F1' },
+  { key: 'j', name: '취업·수당', img: '/assets/briefcase.png', desc: '구직 수당, 직업훈련, 취업·근속 장려금', color: '#0F766E', bg: '#E2F4F1' },
   { key: 't', name: '세금', img: '/assets/receipt.png', desc: '지금 받을 수 있는 세금 혜택과 바뀌는 점', color: '#7C3AED', bg: '#F1EAFD' },
 ]
 export const axisOf = (k: AxisKey) => AXES.find((a) => a.key === k)!
