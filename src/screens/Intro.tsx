@@ -30,7 +30,7 @@ export default function Intro({ onStart }: { onStart: () => void }) {
         <p style={{ fontSize: 16, lineHeight: 1.6, color: '#4E5968', marginTop: 12 }}>
           수도권 사회초년생·취준생을 위한
           <br />
-          주거·금융·고용·세제 혜택 정리
+          주거·금융·고용·세금 혜택 정리
         </p>
       </div>
       <div style={{ padding: '28px 24px 0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }} aria-hidden="true">
