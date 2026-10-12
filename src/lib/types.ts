@@ -32,6 +32,19 @@ export interface Complex {
   note: string
 }
 
+export interface Product {
+  policyId: string
+  org: string
+  name: string
+  base: number
+  max: number
+  perks: { cond: string; bonus: number }[]
+  url: string
+  asOf: string
+  source: string
+  note: string
+}
+
 export interface Eligibility {
   id: string
   ageMin: number | null
@@ -83,6 +96,7 @@ export interface Dataset {
   relations: Relation[]
   standards: Standards
   complexes: Complex[]
+  products: Product[]
   source: 'sheet' | 'fallback'
 }
 

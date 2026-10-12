@@ -6,6 +6,7 @@ import type { AxisKey, Dataset } from './lib/types'
 import Onboarding, { STEP_COUNT } from './screens/Onboarding'
 import { AxisList, Detail, Home, Me, Saved, Summary } from './screens/Main'
 import Intro, { Splash } from './screens/Intro'
+import Compare from './screens/Compare'
 import { Loading, Toast, go } from './ui'
 
 function useHash() {
@@ -114,6 +115,8 @@ export default function App() {
     screen = <AxisList ctx={ctx} axis={k} />
   } else if (route === 'p') {
     screen = <Detail ctx={ctx} id={parts[1]} />
+  } else if (route === 'compare') {
+    screen = <Compare data={ctx.data} profile={state.profile} id={parts[1]} />
   } else if (route === 'saved') {
     const from = new URLSearchParams(query || '').get('from') as AxisKey | null
     screen = <Saved ctx={ctx} from={from ?? undefined} />

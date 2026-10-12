@@ -255,6 +255,7 @@ export function Detail({ ctx, id }: { ctx: Ctx; id: string }) {
   const base = ctx.data.standards.baseDate
   const on = ctx.saved.includes(p.id)
   const isHidden = ctx.hidden.includes(p.id)
+  const hasCompare = ctx.data.products.some((x) => x.policyId === p.id)
   const complexes = p.regionBasis === '희망 지역' ? matchComplexes(ctx.data, p.id, ctx.profile) : []
   const mine = new Set(visible(ctx).map((x) => x.id))
   const rels = ctx.data.relations
@@ -343,7 +344,14 @@ export function Detail({ ctx, id }: { ctx: Ctx; id: string }) {
         })}
       </div>
       <div className="bottom">
-        <a className="cta" href={p.url} target="_blank" rel="noreferrer">{applyHost ? `${applyHost}에서 신청하기` : '신청하러 가기'}{Icon.ext}</a>
+        {hasCompare ? (
+          <>
+            <a className="cta" href={`#/compare/${p.id}`}>최적 선택지 찾기</a>
+            <a href={p.url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, height: 40, fontSize: 14, color: '#6B7684' }}>{applyHost ? `${applyHost}에서 안내 보기` : '안내 보기'}{Icon.ext}</a>
+          </>
+        ) : (
+          <a className="cta" href={p.url} target="_blank" rel="noreferrer">{applyHost ? `${applyHost}에서 신청하기` : '신청하러 가기'}{Icon.ext}</a>
+        )}
       </div>
     </div>
   )

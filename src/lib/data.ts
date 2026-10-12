@@ -1,5 +1,5 @@
 import Papa from 'papaparse'
-import type { AxisKey, Complex, Dataset, Eligibility, Policy, Relation, Standards } from './types'
+import type { AxisKey, Complex, Dataset, Eligibility, Policy, Product, Relation, Standards } from './types'
 
 // 시트 탭 → /api/sheet 함수가 구글 시트 CSV로 바꿔서 돌려줌 (api/sheet.js)
 const SHEETS = {
@@ -8,6 +8,7 @@ const SHEETS = {
   relations: 'relations',
   standards: 'standards',
   complexes: 'complexes',
+  products: 'products',
 } as const
 type SheetKey = keyof typeof SHEETS
 
@@ -99,6 +100,17 @@ function toComplexes(rows: string[][]): Complex[] {
     }))
 }
 
+function toProducts(rows: string[][]): Product[] {
+  return rows
+    .slice(1)
+    .filter((r) => r[0] && r[1])
+    .map((r) => ({
+      policyId: r[0], org: r[1], name: r[2], base: num(r[3]) ?? 0, max: num(r[4]) ?? 0,
+      perks: [[r[5], r[6]], [r[7], r[8]], [r[9], r[10]]].filter(([c]) => c).map(([c, b]) => ({ cond: c.trim(), bonus: num(b) ?? 0 })),
+      url: r[11], asOf: date(r[12] || ''), source: r[13] || '', note: r[14] || '',
+    }))
+}
+
 function toRelations(rows: string[][]): Relation[] {
   return rows
     .slice(1)
@@ -131,7 +143,7 @@ function toStandards(rows: string[][]): Standards {
 }
 
 async function loadSet(get: (k: SheetKey) => Promise<string>): Promise<Omit<Dataset, 'source'>> {
-  const [p, e, r, s, c] = await Promise.all((Object.keys(SHEETS) as SheetKey[]).map(get))
+  const [p, e, r, s, c, pr] = await Promise.all((Object.keys(SHEETS) as SheetKey[]).map(get))
   const policies = toPolicies(parse(p))
   if (policies.length === 0) throw new Error('정책 데이터가 비어 있어요')
   return {
@@ -140,6 +152,7 @@ async function loadSet(get: (k: SheetKey) => Promise<string>): Promise<Omit<Data
     relations: toRelations(parse(r)),
     standards: toStandards(parse(s)),
     complexes: toComplexes(parse(c)),
+    products: toProducts(parse(pr)),
   }
 }
 
