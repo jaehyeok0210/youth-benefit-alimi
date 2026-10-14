@@ -74,7 +74,7 @@ export function judge(policy: Policy, el: Eligibility | undefined, p: Profile, d
     rows.push({ label: '희망 지역 공고', mine: `${gus.slice(0, 3).join(', ')}${gus.length > 3 ? ` 외 ${gus.length - 3}곳` : ''}에 접수 중이거나 예정인 단지 ${cs.length}곳`, result: 'ok' })
   } else if (policy.region !== '전국') {
     if (p.sido !== policy.region) bad()
-    rows.push({ label: `${policy.region} 거주`, mine: `내 조건: ${p.sido === '서울 외' ? '서울 밖 거주' : `${p.sido} ${p.sigungu}`}`.trim(), result: 'ok' })
+    rows.push({ label: `${policy.region} 거주`, mine: `내 조건: ${p.sido} ${p.sigungu}`.trim(), result: 'ok' })
   }
   if (!el) return { status: fail ? 'fail' : 'ok', rows, flags }
 

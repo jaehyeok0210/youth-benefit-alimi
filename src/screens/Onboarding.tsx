@@ -49,7 +49,7 @@ function Insurance({ who, v, set }: { who: string; v: Profile['father']; set: (x
 export function stepValid(p: Profile, step: number): boolean {
   switch (step) {
     case 1: return !!p.birthYear && !!p.birthMonth
-    case 2: return p.sido === '서울 외' || (!!p.sido && !!p.sigungu)
+    case 2: return p.sido === '서울' && !!p.sigungu
     case 3: return p.wishAny || p.wish.length > 0
     case 4: return p.married !== null
     case 5: return p.homeless !== null
@@ -91,22 +91,14 @@ export default function Onboarding({ profile: p, step, edit, onChange, onNext, o
       </div>
     )
   } else if (step === 2) {
-    title = <>어디에 살고 있나요?</>
+    title = <>서울 어느 구에<br />살고 있나요?</>
     desc = '서울시 청년 정책과 전국 정책을 모아줘요'
-    const outside = p.sido === '서울 외'
     body = (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div className="field">
-          <select aria-label="자치구" value={outside ? '' : p.sigungu} onChange={(e) => set({ sido: e.target.value ? '서울' : '', sigungu: e.target.value })}>
-            <option value="">서울 자치구 선택</option>
-            {SIDO['서울'].map((g) => <option key={g} value={g}>{g}</option>)}
-          </select>
-        </div>
-        <button className={`opt left${outside ? ' on' : ''}`} aria-pressed={outside} onClick={() => set(outside ? { sido: '', sigungu: '' } : { sido: '서울 외', sigungu: '' })}>
-          <span className={`box${outside ? ' on' : ''}`} style={{ borderRadius: 11 }}>{outside && Icon.check('#191F28')}</span>
-          <span>서울 밖에 살아요</span>
-        </button>
-        {outside && <div className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>서울 거주자만 받는 정책은 빼고, 전국 정책과 서울 임대주택(희망 지역)을 보여줘요</div>}
+      <div className="field">
+        <select aria-label="자치구" value={p.sigungu} onChange={(e) => set({ sido: e.target.value ? '서울' : '', sigungu: e.target.value })}>
+          <option value="">서울 자치구 선택</option>
+          {SIDO['서울'].map((g) => <option key={g} value={g}>{g}</option>)}
+        </select>
       </div>
     )
   } else if (step === 3) {

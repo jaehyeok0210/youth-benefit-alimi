@@ -45,12 +45,14 @@ export function loadState(): AppState {
     // 희망 지역 문항이 생기기 전에 저장된 프로필은 '상관없음'으로 간주
     const migrated: Record<string, unknown> = s.profile && !('wish' in s.profile) ? { wishAny: true } : {}
     // 서울 전용으로 바뀌기 전 경기·인천 거주지와 희망 지역 정리
-    if (s.profile?.sido && s.profile.sido !== '서울' && s.profile.sido !== '서울 외') Object.assign(migrated, { sido: '서울 외', sigungu: '' })
+    if (s.profile?.sido && s.profile.sido !== '서울') Object.assign(migrated, { sido: '', sigungu: '' })
     if (Array.isArray(s.profile?.wish)) {
       const wish = (s.profile.wish as string[]).filter((w) => w.startsWith('서울 '))
       Object.assign(migrated, { wish, wishAny: s.profile.wishAny || (s.profile.wish.length > 0 && wish.length === 0) })
     }
-    return { ...initialState(), ...s, profile: { ...emptyProfile(), ...s.profile, ...migrated } }
+    // 서울 밖 거주지로 저장돼 있던 사람은 거주지 질문부터 다시 받기
+    const reask = migrated.sido === '' ? { onboarded: false } : {}
+    return { ...initialState(), ...s, ...reask, profile: { ...emptyProfile(), ...s.profile, ...migrated } }
   } catch {
     return initialState()
   }
