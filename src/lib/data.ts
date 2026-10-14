@@ -125,7 +125,9 @@ function toStandards(rows: string[][]): Standards {
   const urban: Record<number, number> = {}
   let employeeRate = 0.03595
   let regionalRate = 0.0719
-  let baseDate = new Date()
+  // 판정 기준일이 비어 있거나 '오늘'이면 실제 오늘 날짜(자정)로 판정
+  const now = new Date()
+  let baseDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const values: Record<string, string> = {}
   for (const r of rows) {
     if (r[0] && r[1]) values[r[0].trim()] = r[1].trim()

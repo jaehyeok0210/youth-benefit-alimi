@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { SIDO, VULNERABLE } from '../lib/constants'
 import type { ReactNode } from 'react'
 import type { InsuranceType, Profile } from '../lib/types'
@@ -50,7 +49,7 @@ function Insurance({ who, v, set }: { who: string; v: Profile['father']; set: (x
 export function stepValid(p: Profile, step: number): boolean {
   switch (step) {
     case 1: return !!p.birthYear && !!p.birthMonth
-    case 2: return !!p.sido && !!p.sigungu
+    case 2: return p.sido === '서울 외' || (!!p.sido && !!p.sigungu)
     case 3: return p.wishAny || p.wish.length > 0
     case 4: return p.married !== null
     case 5: return p.homeless !== null
@@ -68,7 +67,6 @@ export function stepValid(p: Profile, step: number): boolean {
 
 export default function Onboarding({ profile: p, step, edit, onChange, onNext, onBack }: Props) {
   const set = (patch: Partial<Profile>) => onChange({ ...p, ...patch })
-  const [wishTab, setWishTab] = useState('')
   let title: ReactNode = ''
   let desc: ReactNode = null
   let body: ReactNode = null
@@ -94,28 +92,27 @@ export default function Onboarding({ profile: p, step, edit, onChange, onNext, o
     )
   } else if (step === 2) {
     title = <>어디에 살고 있나요?</>
-    desc = '수도권(서울·경기·인천) 정책을 모아줘요'
+    desc = '서울시 청년 정책과 전국 정책을 모아줘요'
+    const outside = p.sido === '서울 외'
     body = (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div className="seg" style={{ gridTemplateColumns: 'repeat(3, minmax(0,1fr))' }}>
-          {Object.keys(SIDO).map((s) => (
-            <button key={s} className={`opt${p.sido === s ? ' on' : ''}`} aria-pressed={p.sido === s} onClick={() => set({ sido: s, sigungu: '' })}>{s}</button>
-          ))}
+        <div className="field">
+          <select aria-label="자치구" value={outside ? '' : p.sigungu} onChange={(e) => set({ sido: e.target.value ? '서울' : '', sigungu: e.target.value })}>
+            <option value="">서울 자치구 선택</option>
+            {SIDO['서울'].map((g) => <option key={g} value={g}>{g}</option>)}
+          </select>
         </div>
-        {p.sido && (
-          <div className="field">
-            <select aria-label="시·군·구" value={p.sigungu} onChange={(e) => set({ sigungu: e.target.value })}>
-              <option value="">시·군·구 선택</option>
-              {SIDO[p.sido].map((g) => <option key={g} value={g}>{g}</option>)}
-            </select>
-          </div>
-        )}
+        <button className={`opt left${outside ? ' on' : ''}`} aria-pressed={outside} onClick={() => set(outside ? { sido: '', sigungu: '' } : { sido: '서울 외', sigungu: '' })}>
+          <span className={`box${outside ? ' on' : ''}`} style={{ borderRadius: 11 }}>{outside && Icon.check('#191F28')}</span>
+          <span>서울 밖에 살아요</span>
+        </button>
+        {outside && <div className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>서울 거주자만 받는 정책은 빼고, 전국 정책과 서울 임대주택(희망 지역)을 보여줘요</div>}
       </div>
     )
   } else if (step === 3) {
     title = <>입주하고 싶은 지역을<br />골라주세요</>
     desc = '임대주택·공공분양은 이 지역에 나온 공고만 보여줘요. 여러 곳을 고를 수 있어요.'
-    const tab = wishTab || p.sido || '서울'
+    const tab = '서울'
     const toggleGu = (g: string) => {
       const k = `${tab} ${g}`
       set({ wishAny: false, wish: p.wish.includes(k) ? p.wish.filter((x) => x !== k) : [...p.wish, k] })
@@ -124,18 +121,8 @@ export default function Onboarding({ profile: p, step, edit, onChange, onNext, o
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <button className={`opt left${p.wishAny ? ' on' : ''}`} aria-pressed={p.wishAny} onClick={() => set({ wishAny: !p.wishAny, wish: [] })}>
           <span className={`box${p.wishAny ? ' on' : ''}`} style={{ borderRadius: 11 }}>{p.wishAny && Icon.check('#191F28')}</span>
-          <span>상관없어요 (수도권 전체)</span>
+          <span>상관없어요 (서울 전체)</span>
         </button>
-        <div className="seg" style={{ gridTemplateColumns: 'repeat(3, minmax(0,1fr))' }}>
-          {Object.keys(SIDO).map((sd) => {
-            const n = p.wish.filter((w) => w.startsWith(sd + ' ')).length
-            return (
-              <button key={sd} className={`opt${tab === sd ? ' on' : ''}`} style={{ minHeight: 44 }} onClick={() => setWishTab(sd)}>
-                {sd}{n > 0 ? ` ${n}` : ''}
-              </button>
-            )
-          })}
-        </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {SIDO[tab].map((g) => {
             const on = p.wish.includes(`${tab} ${g}`)

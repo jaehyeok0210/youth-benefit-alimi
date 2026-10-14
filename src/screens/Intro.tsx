@@ -28,7 +28,7 @@ export default function Intro({ onStart }: { onStart: () => void }) {
           청년 혜택만 모아줘요
         </h1>
         <p style={{ fontSize: 16, lineHeight: 1.6, color: '#4E5968', marginTop: 12 }}>
-          수도권 사회초년생·취준생을 위한
+          서울 사회초년생·취준생을 위한
           <br />
           주거·금융·취업·세금 혜택 정리
         </p>
