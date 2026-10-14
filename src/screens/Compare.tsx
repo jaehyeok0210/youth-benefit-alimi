@@ -14,21 +14,25 @@ const COND_LABEL: Record<string, string> = {
   비대면: '비대면 가입',
 }
 
+/** 앱 질문으로 판단할 수 없는 우대 조건 중 누구나 채울 수 있는 것 */
+const EASY = ['마케팅동의', '이벤트(기간 내 개설)']
+
 /** 내 답변으로 이 우대 조건을 채울 수 있는지 */
-function canMeet(cond: string, org: string, a: Answers): boolean {
+function canMeet(cond: string, org: string, a: Answers, subscription = false): boolean {
   if (cond === '급여이체') return a.salary === true
   if (cond === '카드실적') return a.card === true
   if (cond === '주거래') return a.mainBank === org
   if (cond === '첫거래') return a.mainBank !== org
-  if (cond === '자동이체' || cond === '비대면') return true
+  if (cond === '자동이체' || cond === '비대면' || EASY.includes(cond)) return true
+  if (cond === '주택청약 보유') return subscription
   return false
 }
 
-export function rank(products: Product[], a: Answers) {
+export function rank(products: Product[], a: Answers, subscription = false) {
   return products
     .map((p) => {
-      const met = p.perks.filter((k) => canMeet(k.cond, p.org, a))
-      const miss = p.perks.filter((k) => !canMeet(k.cond, p.org, a))
+      const met = p.perks.filter((k) => canMeet(k.cond, p.org, a, subscription))
+      const miss = p.perks.filter((k) => !canMeet(k.cond, p.org, a, subscription))
       const rate = Math.min(p.max || Infinity, p.base + met.reduce((s, k) => s + k.bonus, 0))
       return { p, met, miss, rate: Math.round(rate * 100) / 100 }
     })
@@ -41,7 +45,7 @@ export default function Compare({ data, profile, id }: { data: Dataset; profile:
   const [a, setA] = useState<Answers>({ mainBank: '', salary: profile.job === '재직' ? null : false, card: null })
   const [done, setDone] = useState(false)
   const [ai, setAi] = useState<string | null>(null)
-  const ranked = useMemo(() => rank(products, a), [products, a])
+  const ranked = useMemo(() => rank(products, a, !!profile.subscription), [products, a, profile.subscription])
   const ready = a.mainBank !== '' && a.salary !== null && a.card !== null
 
   // LLM 설명: 서버에 API 키가 있을 때만 응답, 없으면 조용히 생략
@@ -77,6 +81,7 @@ export default function Compare({ data, profile, id }: { data: Dataset; profile:
   const banks = products.map((p) => p.org)
   const asOf = products.map((p) => p.asOf).filter(Boolean).sort()[0]
   const sample = products.some((p) => p.note.includes('샘플'))
+  const unsure = products.filter((p) => p.note.includes('확인 필요')).map((p) => p.org)
 
   if (!done) {
     const yn = (k: 'salary' | 'card', v: boolean, label: string) => (
@@ -152,6 +157,8 @@ export default function Compare({ data, profile, id }: { data: Dataset; profile:
       <div className="pad muted" style={{ fontSize: 12, lineHeight: 1.6, padding: '16px 24px 32px' }}>
         내 답변으로 채울 수 있는 우대 조건만 더해 계산한 비교 결과예요. 실제 금리는 가입 시점과 은행 심사로 확정돼요.
         {sample && <><br />지금 보이는 금리는 화면 확인용 샘플이에요.</>}
+        {policy.id === 'F01' && <><br />모든 은행 공통으로 총급여 3,600만 원 이하면 +0.5%p, 청년재무상담을 받으면 +0.2%p가 더 붙어요(최고 금리 안에서).</>}
+        {unsure.length > 0 && <><br />{unsure.join('·')}은(는) 우대 조건을 공식 공시로 확인하지 못했어요. 가입 전에 은행 안내를 꼭 확인해 주세요.</>}
       </div>
     </div>
   )

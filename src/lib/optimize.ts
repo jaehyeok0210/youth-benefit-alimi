@@ -71,8 +71,9 @@ const v = (s: Standards, k: string, d: number) => {
 const list = (s: Standards, k: string, d: number[]) => {
   const raw = s.values[k]
   if (!raw) return d
-  const xs = raw.split(',').map((t) => Number(t.trim()))
-  return xs.every(Number.isFinite) ? xs : d
+  const xs = raw.split(/[\/,\s]+/).filter(Boolean).map(Number)
+  // 오름차순이 아니면(시트가 숫자로 바꿔버린 경우 등) 기본값 사용
+  return xs.length === d.length && xs.every(Number.isFinite) && xs.every((x, i) => i === 0 || x > xs[i - 1]) ? xs : d
 }
 
 export function marginalRate(s: Standards, grossMan: number) {

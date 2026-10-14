@@ -32,7 +32,7 @@ const feeOf = (p: Product) => (p.kind === '중개형' ? p.tradeFee : p.yearFee)
 const feeText = (p: Product) =>
   p.kind === '중개형'
     ? p.tradeFee != null ? `국내주식 매매 수수료 ${p.tradeFee}%` : '매매 수수료 확인 필요'
-    : p.yearFee != null ? `연 보수 ${p.yearFee}%` : '연 보수 확인 필요'
+    : p.yearFeeText ? `연 보수 ${p.yearFeeText}%` : '연 보수 확인 필요'
 
 export default function IsaCompare({ data, profile, id }: { data: Dataset; profile: Profile; id: string }) {
   const policy = data.policies.find((p) => p.id === id)!
@@ -89,6 +89,7 @@ export default function IsaCompare({ data, profile, id }: { data: Dataset; profi
   const gross = profile.gross ?? 0
   const seomin = profile.job === '재직' && gross > 0 && gross <= 5000
   const sample = list.some((p) => p.note.includes('샘플'))
+  const unsure = list.some((p) => p.note.includes('확인 필요') || feeOf(p) == null)
   const asOf = list.map((p) => p.asOf).filter(Boolean).sort()[0]
   const k = KINDS[kind]
 
@@ -142,6 +143,8 @@ export default function IsaCompare({ data, profile, id }: { data: Dataset; profi
         ISA는 한 사람이 한 계좌만 열 수 있어요. 나중에 유형이나 기관을 바꾸려면 계좌 이전을 해야 해요. 투자 상품은 원금 손실이 생길 수 있어요.
         {asOf && <><br />{asOf} 기준이에요.</>}
         {sample && <><br />지금 보이는 수수료는 화면 확인용 샘플이에요.</>}
+        {unsure && <><br />일부 기관은 수수료를 공식 공시로 확인하지 못했어요. 가입 전에 기관 안내를 꼭 확인해 주세요.</>}
+        <br />수수료는 비대면 개설·이벤트 신청 기준이고, 유관기관 수수료는 따로 붙어요.
       </div>
     </div>
   )

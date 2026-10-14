@@ -85,7 +85,59 @@ export function Summary({ ctx, axes, setAxes, onBuild }: { ctx: Ctx; axes: AxisK
 }
 
 /* ---------- 04 홈 ---------- */
+/** 검색어를 띄어쓰기로 나눠 모두 포함하는 정책 (이름 > 기관 > 내용 순으로 정렬) */
+export function searchPolicies(policies: Policy[], q: string) {
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean)
+  if (!words.length) return []
+  const norm = (t: string) => t.toLowerCase().replace(/\s+/g, '')
+  return policies
+    .map((p) => {
+      const name = norm(p.name), org = norm(p.org), rest = norm(`${p.axisName} ${p.benefit} ${p.amountFormula}`)
+      let score = 0
+      for (const w of words) {
+        const k = norm(w)
+        if (name.includes(k)) score += 3
+        else if (org.includes(k)) score += 2
+        else if (rest.includes(k)) score += 1
+        else return null
+      }
+      return { p, score }
+    })
+    .filter((x): x is { p: Policy; score: number } => !!x)
+    .sort((a, b) => b.score - a.score)
+    .map((x) => x.p)
+}
+
+function SearchResults({ ctx, q }: { ctx: Ctx; q: string }) {
+  const res = searchPolicies(ctx.data.policies, q)
+  if (!res.length) return <div className="muted" style={{ padding: '28px 8px', textAlign: 'center', fontSize: 15 }}>'{q}'에 맞는 정책이 없어요</div>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div className="muted" style={{ fontSize: 13, padding: '0 4px 8px' }}>검색 결과 {res.length}개</div>
+      {res.map((p) => {
+        const j = ctx.judged[p.id]
+        const on = ctx.saved.includes(p.id)
+        const fail = j?.status === 'fail'
+        return (
+          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 4px', borderTop: '1px solid #F2F4F6' }}>
+            <a href={`#/p/${p.id}`} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <span className={`chip c-${p.axis}`}>{axisOf(p.axis).name}</span>
+                {fail ? <span className="chip c-gray">{j?.flags[0] === '지금 공고 없음' ? '지금 공고 없음' : '조건 안 맞음'}</span> : ctx.hidden.includes(p.id) ? <span className="chip c-gray">관심없음</span> : <DdayChip d={dday(p.deadline, ctx.data.standards.baseDate)} deadline={p.deadline} />}
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: fail ? '#6B7684' : undefined }}>{p.name}</div>
+              <div className="muted" style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.org} · {p.benefit}</div>
+            </a>
+            <button className="ib" aria-label={on ? '저장 취소' : '저장하기'} aria-pressed={on} onClick={() => ctx.toggleSave(p.id)}>{Icon.bookmark(on)}</button>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export function Home({ ctx, axes }: { ctx: Ctx; axes: AxisKey[] }) {
+  const [q, setQ] = useState('')
   const list = shown(ctx)
   const comboCount = optimizeCombos(list, ctx.data.relations).reduce((s, g) => s + g.dropped.length, 0)
   return (
@@ -98,6 +150,16 @@ export function Home({ ctx, axes }: { ctx: Ctx; axes: AxisKey[] }) {
         <h1 className="h1">어떤 혜택을 볼까요?</h1>
         <div className="muted" style={{ fontSize: 15, marginTop: 4 }}>내 조건에 맞는 정보만 모아뒀어요</div>
       </div>
+      <div style={{ padding: '0 16px 12px' }}>
+        <div className="field" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B95A1" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+          <input type="search" aria-label="정책 검색" placeholder="정책 이름, 기관, 혜택으로 검색" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1, textAlign: "left", fontSize: 16, fontWeight: 500 }} />
+          {q && <button aria-label="검색어 지우기" onClick={() => setQ('')} style={{ border: 0, background: '#B0B8C1', color: '#fff', width: 20, height: 20, borderRadius: 10, fontSize: 12, lineHeight: '20px', padding: 0 }}>✕</button>}
+        </div>
+      </div>
+      {q.trim() ? (
+        <div style={{ flex: 1, padding: '0 16px 20px' }}><SearchResults ctx={ctx} q={q.trim()} /></div>
+      ) : (
       <div style={{ flex: 1, padding: '0 16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {AXES.filter((a) => axes.includes(a.key)).map((a) => {
           const items = list.filter((p) => p.axis === a.key)
@@ -130,6 +192,7 @@ export function Home({ ctx, axes }: { ctx: Ctx; axes: AxisKey[] }) {
         </a>
         {ctx.data.source === 'fallback' && <div className="muted" style={{ fontSize: 12, textAlign: 'center' }}>시트에 연결하지 못해 저장된 데이터로 보여주고 있어요</div>}
       </div>
+      )}
     </div>
   )
 }
@@ -278,7 +341,7 @@ export function Detail({ ctx, id }: { ctx: Ctx; id: string }) {
     <div className="page">
       <TopBar onBack={() => back(`/axis/${p.axis}`)} />
       <div className="pad" style={{ paddingBottom: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ display: 'flex', gap: 6 }}><DdayChip d={dday(p.deadline, base)} deadline={p.deadline} /><span className={`chip c-${p.axis}`}>{a.name}</span>{j.status === 'check' && <span className="chip c-check">{j.flags[0]}</span>}</div>
+        <div style={{ display: 'flex', gap: 6 }}><DdayChip d={dday(p.deadline, base)} deadline={p.deadline} /><span className={`chip c-${p.axis}`}>{a.name}</span>{j.status === 'check' && <span className="chip c-check">{j.flags[0]}</span>}{j.status === 'fail' && <span className="chip c-gray">{j.flags[0] === '지금 공고 없음' ? '희망 지역에 지금 공고 없음' : '지금 조건으론 어려워요'}</span>}</div>
         <h1 className="h1">{p.name}</h1>
         <div className="muted" style={{ fontSize: 15 }}>{p.org}</div>
         <div style={{ marginTop: 14, background: a.bg, borderRadius: 20, padding: 20 }}>
@@ -288,7 +351,6 @@ export function Detail({ ctx, id }: { ctx: Ctx; id: string }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10, fontSize: 15, lineHeight: 1.6 }}>
           <div style={{ display: 'flex', gap: 16 }}><span className="muted" style={{ width: 64, flexShrink: 0 }}>지원 내용</span><span>{p.benefit}</span></div>
           <div style={{ display: 'flex', gap: 16 }}><span className="muted" style={{ width: 64, flexShrink: 0 }}>접수 일정</span><span>{p.realSchedule}</span></div>
-          {p.memo && <div style={{ display: 'flex', gap: 16 }}><span className="muted" style={{ width: 64, flexShrink: 0 }}>참고</span><span className="muted">{p.memo}</span></div>}
         </div>
         {isHidden ? (
           <button className="cta2" style={{ marginTop: 8, height: 48 }} onClick={() => ctx.unhide(p.id)}>관심없음 취소</button>

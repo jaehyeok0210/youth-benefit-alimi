@@ -48,6 +48,8 @@ export interface Product {
   kind: string
   tradeFee: number | null
   yearFee: number | null
+  /** 시트에 적힌 그대로 (예: 0.1~0.7) */
+  yearFeeText: string
   perk: string
 }
 

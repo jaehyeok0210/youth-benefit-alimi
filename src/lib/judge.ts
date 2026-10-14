@@ -62,21 +62,24 @@ export function judge(policy: Policy, el: Eligibility | undefined, p: Profile, d
   const rows: JudgeRow[] = []
   const flags: string[] = []
   let fail = false
+  let reasons = 0
+  let noNotice = false
   const bad = () => {
     fail = true
+    reasons++
   }
 
   // 지역: 임대주택·분양은 희망 지역의 공고 단지 기준, 나머지는 거주지 기준
   if (policy.regionBasis === '희망 지역') {
     const cs = matchComplexes(d, policy.id, p)
-    if (!cs.length) bad()
+    if (!cs.length) { fail = true; noNotice = true }
     const gus = [...new Set(cs.map((c) => c.sigungu))]
     rows.push({ label: '희망 지역 공고', mine: `${gus.slice(0, 3).join(', ')}${gus.length > 3 ? ` 외 ${gus.length - 3}곳` : ''}에 접수 중이거나 예정인 단지 ${cs.length}곳`, result: 'ok' })
   } else if (policy.region !== '전국') {
     if (p.sido !== policy.region) bad()
     rows.push({ label: `${policy.region} 거주`, mine: `내 조건: ${p.sido} ${p.sigungu}`.trim(), result: 'ok' })
   }
-  if (!el) return { status: fail ? 'fail' : 'ok', rows, flags }
+  if (!el) return { status: fail ? 'fail' : 'ok', rows, flags: fail && noNotice ? ['지금 공고 없음'] : flags }
 
   // 나이
   const age = ageOf(p, s.baseDate)
@@ -195,6 +198,7 @@ export function judge(policy: Policy, el: Eligibility | undefined, p: Profile, d
   }
 
   const status = fail ? 'fail' : rows.some((r) => r.result === 'check') ? 'check' : 'ok'
+  if (status === 'fail' && noNotice && reasons === 0) flags.unshift('지금 공고 없음')
   return { status, rows, flags }
 }
 
