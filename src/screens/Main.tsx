@@ -136,6 +136,60 @@ function SearchResults({ ctx, q }: { ctx: Ctx; q: string }) {
   )
 }
 
+/** 지금 신청 가능 / 다음에 챙길 정책 */
+type Timing = { p: Policy; kind: 'now' | 'soon' | 'next'; label: string; sort: number }
+export function timingOf(p: Policy, base: Date): Timing {
+  const dl = dday(p.deadline, base)
+  const st = dday(p.start, base)
+  if (st != null && st > 0) return { p, kind: 'soon', label: p.axis === 't' ? `연말정산 D-${st}` : `D-${st} 접수 시작`, sort: st }
+  if (dl == null || dl >= 0) return { p, kind: 'now', label: dl == null ? '상시' : dl === 0 ? '오늘 마감' : `D-${dl} 마감`, sort: dl ?? 9999 }
+  const m = Number(p.deadline.slice(5, 7))
+  const gap = (m - (base.getMonth() + 1) + 12) % 12 || 12
+  return { p, kind: 'next', label: `${m}월 접수했던 정책 · 다음 공고 대기`, sort: 1000 + gap }
+}
+
+function NowNext({ ctx }: { ctx: Ctx }) {
+  const [tab, setTab] = useState<'now' | 'next'>('now')
+  const [all, setAll] = useState(false)
+  const base = ctx.data.standards.baseDate
+  const ts = shown(ctx).map((p) => timingOf(p, base))
+  const now = ts.filter((t) => t.kind === 'now').sort((a, b) => a.sort - b.sort)
+  const next = ts.filter((t) => t.kind !== 'now').sort((a, b) => a.sort - b.sort)
+  const items = tab === 'now' ? now : next
+  const view = all ? items : items.slice(0, 3)
+  return (
+    <div style={{ background: '#fff', border: '1px solid #E5E8EB', borderRadius: 20, padding: '6px 16px 10px' }}>
+      <div role="tablist" style={{ display: 'flex', gap: 4, padding: '8px 0' }}>
+        {([['now', '지금 신청 가능', now.length], ['next', '다음에 챙길 정책', next.length]] as const).map(([k, t, n]) => (
+          <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setAll(false) }}
+            style={{ flex: 1, height: 40, border: 0, borderRadius: 12, fontSize: 15, fontWeight: tab === k ? 700 : 500, background: tab === k ? '#191F28' : '#F2F4F6', color: tab === k ? '#fff' : '#4E5968' }}>
+            {t} {n}
+          </button>
+        ))}
+      </div>
+      {items.length === 0 && <div className="muted" style={{ padding: '14px 4px', fontSize: 14 }}>{tab === 'now' ? '지금 신청할 수 있는 정책이 없어요' : '다음에 챙길 정책이 없어요'}</div>}
+      {view.map(({ p, kind, label }) => {
+        const urgent = kind === 'now' && /^D-[0-7] |오늘/.test(label)
+        return (
+          <a key={p.id} href={`#/p/${p.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 4px', borderTop: '1px solid #F2F4F6' }}>
+            <span className={`chip c-${p.axis}`} style={{ width: 64, justifyContent: 'center' }}>{axisOf(p.axis).name}</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 15, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
+              <span style={{ display: 'block', fontSize: 12, marginTop: 2, color: urgent ? '#E42939' : '#8B95A1', fontWeight: urgent ? 600 : 400 }}>{label}</span>
+            </span>
+            {Icon.chev}
+          </a>
+        )
+      })}
+      {items.length > 3 && (
+        <button onClick={() => setAll(!all)} style={{ width: '100%', height: 40, border: 0, background: 'transparent', fontSize: 14, fontWeight: 600, color: '#4E5968', borderTop: '1px solid #F2F4F6' }}>
+          {all ? '접기' : `${items.length - 3}개 더 보기`}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export function Home({ ctx, axes }: { ctx: Ctx; axes: AxisKey[] }) {
   const [q, setQ] = useState('')
   const list = shown(ctx)
@@ -161,6 +215,7 @@ export function Home({ ctx, axes }: { ctx: Ctx; axes: AxisKey[] }) {
         <div style={{ flex: 1, padding: '0 16px 20px' }}><SearchResults ctx={ctx} q={q.trim()} /></div>
       ) : (
       <div style={{ flex: 1, padding: '0 16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <NowNext ctx={ctx} />
         {AXES.filter((a) => axes.includes(a.key)).map((a) => {
           const items = list.filter((p) => p.axis === a.key)
           const ok = items.filter((p) => ctx.judged[p.id].status === 'ok').length
