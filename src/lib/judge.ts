@@ -17,6 +17,11 @@ export function ageOf(p: Profile, base: Date): number | null {
   return a
 }
 
+/** 일 상태 표시 */
+export const jobLabel = (p: Profile) => (p.job === '재직' ? `${p.company ?? ''} 재직`.trim() : p.job === '사업' ? '개인사업자' : '구직 중')
+/** 소득 이름: 근로자는 총급여, 사업자는 종합소득 */
+export const incomeName = (p: Profile) => (p.job === '사업' ? '종합소득' : '총급여')
+
 /** 본인 월 소득(세전) */
 export const ownMonthly = (p: Profile) => ((p.gross ?? 0) * 10000) / 12
 
@@ -107,16 +112,19 @@ export function judge(policy: Policy, el: Eligibility | undefined, p: Profile, d
     rows.push({ label, mine: `내 조건: ${mine}`, result: 'ok' })
   }
 
-  // 재직·구직
-  if (el.jobCode === '재직' || el.jobCode === '구직') {
-    if (p.job !== el.jobCode) bad()
-    rows.push({
-      label: el.jobCode === '재직' ? '재직 중' : '미취업·구직 중',
-      mine: `내 조건: ${p.job === '재직' ? `재직 · ${p.company ?? ''}` : '구직 중'}`,
-      result: 'ok',
-    })
+  // 재직·구직·사업
+  const JOB: Record<string, { ok: string[]; label: string }> = {
+    재직: { ok: ['재직'], label: '근로자(재직 중)' },
+    구직: { ok: ['구직'], label: '미취업·구직 중' },
+    소득자: { ok: ['재직', '사업'], label: '근로·사업소득이 있음' },
+    사업: { ok: ['사업'], label: '개인사업자' },
   }
-  if (el.companyCode !== '무관') {
+  const jr = JOB[el.jobCode]
+  if (jr) {
+    if (!p.job || !jr.ok.includes(p.job)) bad()
+    rows.push({ label: jr.label, mine: `내 조건: ${jobLabel(p)}`, result: 'ok' })
+  }
+  if (el.companyCode !== '무관' && p.job !== '사업') {
     const okSizes = el.companyCode === '중소' ? ['중소기업'] : ['중소기업', '중견기업']
     if (!p.company || !okSizes.includes(p.company)) bad()
     rows.push({ label: `${el.companyCode === '중소' ? '중소기업' : '중소·중견기업'} 재직`, mine: `내 조건: ${p.company ?? '-'}`, result: 'ok' })
@@ -149,7 +157,11 @@ export function judge(policy: Policy, el: Eligibility | undefined, p: Profile, d
 
   // 본인 소득
   const own = ownMonthly(p)
-  if (!priority && el.ownBasis !== '없음' && (el.ownMax != null || el.ownMin != null)) {
+  if (!priority && p.job === '사업' && el.bizCap != null) {
+    // 사업자는 시트의 사업자 기준(종합소득 등)으로 판정
+    if ((p.gross ?? 0) > el.bizCap) bad()
+    rows.push({ label: `${el.bizBasis || '종합소득'} 연 ${el.bizCap.toLocaleString()}만 원 이하`, mine: `내 조건: 종합소득 ${won((p.gross ?? 0) * 10000)}`, result: 'ok' })
+  } else if (!priority && el.ownBasis !== '없음' && (el.ownMax != null || el.ownMin != null)) {
     const max = el.ownMax != null ? limit(el.ownBasis, el.ownMax, s, 1) : Infinity
     const min = el.ownMin != null ? limit(el.ownBasis, el.ownMin, s, 1) : -Infinity
     if (own > max || own < min) bad()
@@ -161,7 +173,7 @@ export function judge(policy: Policy, el: Eligibility | undefined, p: Profile, d
           : `본인 소득 ${basisLabel(el.ownBasis, el.ownMin)} 이상`
     rows.push({
       label,
-      mine: `총급여 ${won((p.gross ?? 0) * 10000)} → 월 약 ${won(own)}${max !== Infinity ? ` (기준 월 ${won(max)})` : ''}`,
+      mine: `${incomeName(p)} ${won((p.gross ?? 0) * 10000)} → 월 약 ${won(own)}${max !== Infinity ? ` (기준 월 ${won(max)})` : ''}`,
       result: 'ok',
     })
   }

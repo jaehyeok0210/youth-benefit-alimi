@@ -76,8 +76,9 @@ const list = (s: Standards, k: string, d: number[]) => {
   return xs.length === d.length && xs.every(Number.isFinite) && xs.every((x, i) => i === 0 || x > xs[i - 1]) ? xs : d
 }
 
-export function marginalRate(s: Standards, grossMan: number) {
-  const taxable = grossMan * v(s, '과세표준 추정 비율', 0.7)
+export function marginalRate(s: Standards, grossMan: number, biz = false) {
+  // 근로자: 총급여 × 추정 비율 / 사업자: 종합소득금액 − 기본공제 150만 원
+  const taxable = biz ? Math.max(0, grossMan - 150) : grossMan * v(s, '과세표준 추정 비율', 0.7)
   const cuts = list(s, '과세표준 구간(만 원)', [1400, 5000, 8800, 15000])
   const rates = list(s, '구간별 세율', [0.06, 0.15, 0.24, 0.35, 0.38])
   let i = 0
@@ -87,12 +88,12 @@ export function marginalRate(s: Standards, grossMan: number) {
 
 export interface RentResult {
   credit: { ok: boolean; reason?: string; saving: number; base: number; rate: number; capped?: number }
-  receipt: { saving: number; deduction: number; marginal: number; threshold: number }
+  receipt: { saving: number; deduction: number; marginal: number; threshold: number; none?: boolean }
 }
 
 /** 산출세액 - 근로소득세액공제로 결정세액을 대략 추정 (만 원) */
-export function estimatedTaxDue(s: Standards, grossMan: number) {
-  const { taxable } = marginalRate(s, grossMan)
+export function estimatedTaxDue(s: Standards, grossMan: number, biz = false) {
+  const { taxable } = marginalRate(s, grossMan, biz)
   const cuts = list(s, '과세표준 구간(만 원)', [1400, 5000, 8800, 15000])
   const rates = list(s, '구간별 세율', [0.06, 0.15, 0.24, 0.35, 0.38])
   let tax = 0
@@ -102,27 +103,34 @@ export function estimatedTaxDue(s: Standards, grossMan: number) {
     if (taxable > prev) tax += (Math.min(taxable, top) - prev) * rates[i]
     prev = top
   }
+  if (biz) return Math.max(0, tax - 7) // 표준세액공제 7만 원 (성실사업자 12만 원)
   const workCredit = Math.min(tax <= 130 ? tax * 0.55 : 71.5 + (tax - 130) * 0.3, grossMan <= 3300 ? 74 : grossMan <= 7000 ? 66 : 50)
   return Math.max(0, tax - workCredit)
 }
 
 /** 금액 단위: 만 원. 절세액에는 지방소득세(10%)를 포함 */
-export function rentTax(s: Standards, grossMan: number, rentMonthly: number, otherSpend: number, homeless: boolean): RentResult {
+export function rentTax(s: Standards, grossMan: number, rentMonthly: number, otherSpend: number, homeless: boolean, biz = false): RentResult {
   const annual = rentMonthly * 12
-  const cap = v(s, '월세 세액공제 총급여 상한(만 원)', 8000)
-  const hiCut = v(s, '월세 세액공제 17% 총급여 기준(만 원)', 5500)
+  // 사업자는 종합소득금액 기준 (7,000만 원 이하, 4,500만 원 이하면 17%)
+  const cap = biz ? v(s, '월세 세액공제 종합소득 상한(만 원)', 7000) : v(s, '월세 세액공제 총급여 상한(만 원)', 8000)
+  const hiCut = biz ? v(s, '월세 세액공제 17% 종합소득 기준(만 원)', 4500) : v(s, '월세 세액공제 17% 총급여 기준(만 원)', 5500)
   const rate = grossMan <= hiCut ? v(s, '월세 세액공제율 높음', 0.17) : v(s, '월세 세액공제율 낮음', 0.15)
   const base = Math.min(annual, v(s, '월세 세액공제 한도(만 원)', 1000))
   let credit: RentResult['credit']
-  if (grossMan > cap) credit = { ok: false, reason: `총급여 ${cap.toLocaleString()}만 원 초과`, saving: 0, base, rate }
+  if (grossMan > cap) credit = { ok: false, reason: `${biz ? '종합소득' : '총급여'} ${cap.toLocaleString()}만 원 초과`, saving: 0, base, rate }
   else if (!homeless) credit = { ok: false, reason: '무주택 세대주만 받을 수 있어요', saving: 0, base, rate }
   else {
     // 세액공제는 낼 세금(결정세액 추정)보다 많이 줄일 수 없음
-    const due = estimatedTaxDue(s, grossMan)
+    const due = estimatedTaxDue(s, grossMan, biz)
     const raw = base * rate
     credit = { ok: true, saving: Math.min(raw, due) * 1.1, base, rate, capped: raw > due ? due : undefined }
   }
 
+  if (biz) {
+    // 신용카드·현금영수증 소득공제는 근로소득자만 받을 수 있어요
+    const { rate: marginal } = marginalRate(s, grossMan, true)
+    return { credit, receipt: { saving: 0, deduction: 0, marginal, threshold: 0, none: true } }
+  }
   const T = grossMan * v(s, '카드 공제 문턱(총급여 대비)', 0.25)
   const L = grossMan <= 7000 ? v(s, '카드 공제 기본한도 총급여 7천 이하(만 원)', 300) : v(s, '카드 공제 기본한도 총급여 7천 초과(만 원)', 250)
   const cardRate = v(s, '신용카드 공제율', 0.15)

@@ -56,7 +56,8 @@ export function RentCalc({ data, profile }: { data: Dataset; profile: Profile })
   const gross = profile.gross ?? 0
   const r = Number(rent.replace(/\D/g, '')) || 0
   const o = Number(other.replace(/\D/g, '')) || 0
-  const res = r > 0 && gross > 0 ? rentTax(data.standards, gross, r, o, !!profile.homeless) : null
+  const biz = profile.job === '사업'
+  const res = r > 0 && gross > 0 ? rentTax(data.standards, gross, r, o, !!profile.homeless, biz) : null
   const winner = res ? (res.credit.ok && res.credit.saving >= res.receipt.saving ? 'credit' : 'receipt') : null
   const diff = res ? Math.abs(res.credit.saving - res.receipt.saving) : 0
   const field = (id: string, label: string, val: string, set: (s: string) => void, ph: string, unit: string) => (
@@ -72,22 +73,30 @@ export function RentCalc({ data, profile }: { data: Dataset; profile: Profile })
         <div>
           <span className="chip c-t">세금</span>
           <h1 className="h1" style={{ marginTop: 10 }}>월세, 세액공제와<br />현금영수증 중 뭐가 유리할까요?</h1>
-          <p className="desc">같은 월세로 두 가지를 다 받을 수는 없어요. 총급여 {gross.toLocaleString()}만 원 기준으로 계산해요.</p>
+          <p className="desc">{biz ? <>개인사업자는 현금영수증 소득공제를 받을 수 없어서 월세 세액공제만 계산해요. 종합소득 {gross.toLocaleString()}만 원 기준이에요.</> : <>같은 월세로 두 가지를 다 받을 수는 없어요. 총급여 {gross.toLocaleString()}만 원 기준으로 계산해요.</>}</p>
         </div>
         {field('rent', '한 달 월세', rent, setRent, '예: 55', '만 원')}
-        {field('other', '월세 말고 1년 카드·현금 사용액', other, setOther, '예: 1,200', '만 원')}
+        {!biz && field('other', '월세 말고 1년 카드·현금 사용액', other, setOther, '예: 1,200', '만 원')}
       </div>
       {gross === 0 && <div className="pad muted" style={{ paddingTop: 16, fontSize: 14 }}>총급여가 0원이면 줄일 세금이 없어요. 내 정보에서 총급여를 확인해 주세요.</div>}
       {res && (
         <div style={{ padding: '24px 20px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {biz ? (
+          <div style={{ background: '#F1EAFD', borderRadius: 20, padding: 20 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#7C3AED' }}>월세 세액공제로 줄어드는 세금</div>
+            <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{res.credit.ok ? `약 ${man(res.credit.saving)}` : '받을 수 없어요'}</div>
+            <div style={{ fontSize: 14, color: '#4E5968', marginTop: 6, lineHeight: 1.5 }}>개인사업자는 성실사업자이거나 성실신고확인대상자여야 받을 수 있어요. 해당하는지는 세무서나 세무대리인에게 확인해 주세요.</div>
+          </div>
+          ) : (
           <div style={{ background: '#F1EAFD', borderRadius: 20, padding: 20 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: '#7C3AED' }}>내 조건 기준으로 유리한 쪽</div>
             <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{winner === 'credit' ? '월세 세액공제' : '현금영수증 소득공제'}</div>
             <div style={{ fontSize: 15, color: '#4E5968', marginTop: 4 }}>{diff >= 1 ? `약 ${man(diff)} 더 줄어요` : '두 방식의 차이가 거의 없어요'}</div>
           </div>
+          )}
           {[
             { k: 'credit', t: '월세 세액공제', s: res.credit.ok ? res.credit.saving : 0, d: res.credit.ok ? `연 월세 ${man(res.credit.base)} × ${Math.round(res.credit.rate * 100)}% (지방소득세 포함)${res.credit.capped != null ? ` · 낼 세금(약 ${man(res.credit.capped)})까지만 줄어요` : ''}` : `받을 수 없어요 · ${res.credit.reason}` },
-            { k: 'receipt', t: '현금영수증 소득공제', s: res.receipt.saving, d: `공제 ${man(res.receipt.deduction)} × 세율 ${Math.round(res.receipt.marginal * 100)}% 추정 (지방소득세 포함) · 총급여 25%(${man(res.receipt.threshold)})를 넘는 사용분부터 공제` },
+            ...(res.receipt.none ? [] : [{ k: 'receipt', t: '현금영수증 소득공제', s: res.receipt.saving, d: `공제 ${man(res.receipt.deduction)} × 세율 ${Math.round(res.receipt.marginal * 100)}% 추정 (지방소득세 포함) · 총급여 25%(${man(res.receipt.threshold)})를 넘는 사용분부터 공제` }]),
           ].map((x) => (
             <div key={x.k} style={{ background: '#F2F4F6', borderRadius: 16, padding: '16px 18px', opacity: winner === x.k ? 1 : 0.7 }}>
               <div style={{ display: 'flex', alignItems: 'center' }}>

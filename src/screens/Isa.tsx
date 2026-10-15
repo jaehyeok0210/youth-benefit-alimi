@@ -87,7 +87,11 @@ export default function IsaCompare({ data, profile, id }: { data: Dataset; profi
     .filter((p) => p.kind === kind)
     .sort((x, y) => (feeOf(x) ?? 99) - (feeOf(y) ?? 99) || Number(!!y.perk) - Number(!!x.perk))
   const gross = profile.gross ?? 0
-  const seomin = profile.job === '재직' && gross > 0 && gross <= 5000
+  // 서민형: 근로자 총급여 5,000만 원 이하, 사업자 종합소득 3,800만 원 이하
+  const cut = profile.job === '사업' ? 3800 : 5000
+  const worker = profile.job === '재직' || profile.job === '사업'
+  const seomin = worker && gross > 0 && gross <= cut
+  const incName = profile.job === '사업' ? '종합소득' : '총급여'
   const sample = list.some((p) => p.note.includes('샘플'))
   const unsure = list.some((p) => p.note.includes('확인 필요') || feeOf(p) == null)
   const asOf = list.map((p) => p.asOf).filter(Boolean).sort()[0]
@@ -106,7 +110,7 @@ export default function IsaCompare({ data, profile, id }: { data: Dataset; profi
         <div>담을 수 있어요 · {k.can}</div>
         <div className="muted">{k.cant}</div>
         <div style={{ height: 1, background: 'rgba(0,0,0,.06)', margin: '4px 0' }} />
-        <div>{seomin ? '총급여 5,000만 원 이하라 서민형으로 가입할 수 있어요 · 순이익 400만 원까지 비과세' : profile.job === '재직' && gross > 5000 ? '총급여 5,000만 원 초과라 일반형이에요 · 순이익 200만 원까지 비과세' : '서민형(비과세 400만 원)은 총급여 5,000만 원 이하일 때 가입할 수 있어요. 일반형은 200만 원까지 비과세예요.'}</div>
+        <div>{seomin ? `${incName} ${cut.toLocaleString()}만 원 이하라 서민형으로 가입할 수 있어요 · 순이익 400만 원까지 비과세` : worker && gross > cut ? `${incName} ${cut.toLocaleString()}만 원 초과라 일반형이에요 · 순이익 200만 원까지 비과세` : '서민형(비과세 400만 원)은 총급여 5,000만 원(사업자는 종합소득 3,800만 원) 이하일 때 가입할 수 있어요. 일반형은 200만 원까지 비과세예요.'}</div>
       </div>
 
       <div style={{ padding: '20px 20px 0' }}>
