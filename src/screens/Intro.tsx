@@ -33,11 +33,11 @@ export default function Intro({ onStart }: { onStart: () => void }) {
           주거·금융·취업·세금 혜택 정리
         </p>
       </div>
-      <div style={{ padding: '28px 24px 0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }} aria-hidden="true">
+      <div style={{ margin: '28px 24px 0', padding: '18px 0', borderTop: '1px solid #E5E8EB', borderBottom: '1px solid #E5E8EB', display: 'flex', justifyContent: 'space-around' }} aria-hidden="true">
         {AXES.map((a, i) => (
-          <div key={a.key} className="intro-tile" style={{ background: a.bg, animationDelay: `${i * 0.08}s` }}>
-            <img src={a.img} alt="" width={48} height={48} />
-            <span style={{ fontSize: 16, fontWeight: 700, color: a.color }}>{a.name}</span>
+          <div key={a.key} className="intro-icon" style={{ animationDelay: `${i * 0.08}s` }}>
+            <img src={a.img} alt="" width={36} height={36} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#4E5968' }}>{a.name}</span>
           </div>
         ))}
       </div>

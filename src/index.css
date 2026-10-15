@@ -88,6 +88,7 @@ h1, h2, p { margin: 0; }
 /* 첫 화면 */
 .intro { background: linear-gradient(180deg, #F4F8FF 0%, #FBF8FF 28%, #FFFFFF 52%); }
 .intro .bottom { background: linear-gradient(to bottom, rgba(255,255,255,0), #fff 18%); }
+.intro-icon { display: flex; flex-direction: column; align-items: center; gap: 6px; animation: tileIn .5s cubic-bezier(.3,.7,.4,1) both; }
 .intro-tile { border-radius: 20px; padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 10px; animation: tileIn .5s cubic-bezier(.3,.7,.4,1) both; }
 @keyframes tileIn { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
 
