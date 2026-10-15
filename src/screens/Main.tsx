@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { AXES, DISCLAIMER, axisOf } from '../lib/constants'
-import { ageOf, dday, incomeName, jobLabel, matchComplexes, won } from '../lib/judge'
+import { ageOf, dday, matchComplexes, won } from '../lib/judge'
 import { optimizeCombos } from '../lib/optimize'
 import type { AxisKey, Dataset, Judgement, Policy, Profile } from '../lib/types'
 import { DdayChip, Icon, StatusChip, TopBar, back, go } from '../ui'
@@ -36,8 +36,8 @@ export function conditionText(p: Profile, base: Date) {
     `희망 ${p.wishAny ? '서울 전체' : p.wish.map((w) => w.split(' ')[1]).join('·') || '-'}`,
     p.married ? '기혼' : '미혼',
     p.homeless ? '무주택' : '주택 있음',
-    jobLabel(p),
-    `${incomeName(p)} ${won((p.gross ?? 0) * 10000)}`,
+    p.job === '재직' ? `${p.company ?? ''} 재직` : '구직 중',
+    `총급여 ${won((p.gross ?? 0) * 10000)}`,
     p.subscription ? '청약통장 있음' : '청약통장 없음',
   ]
 }
@@ -479,7 +479,7 @@ export function Detail({ ctx, id }: { ctx: Ctx; id: string }) {
       <div className="bottom">
         {p.id === 'T01' ? (
           <>
-            <a className="cta" href="#/calc/T01">{ctx.profile.job === "사업" ? "월세 세액공제 계산하기" : "세액공제 vs 현금영수증 계산하기"}</a>
+            <a className="cta" href="#/calc/T01">세액공제 vs 현금영수증 계산하기</a>
             <a href={p.url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, height: 40, fontSize: 14, color: '#6B7684' }}>{applyHost ? `${applyHost}에서 안내 보기` : '안내 보기'}{Icon.ext}</a>
           </>
         ) : hasCompare ? (
@@ -625,7 +625,7 @@ export function Me({ ctx, onRebuild, onReset }: { ctx: Ctx; onRebuild: () => voi
   const groups: { title: string; rows: [string, string, number][] }[] = [
     { title: '기본', rows: [['생년월일', `${p.birthYear}.${String(p.birthMonth).padStart(2, '0')} (만 ${ageOf(p, ctx.data.standards.baseDate)}세)`, 1], ['거주지', `${p.sido} ${p.sigungu}`, 2], ['혼인', p.married ? '기혼' : '미혼', 4]] },
     { title: '주거', rows: [['입주 희망 지역', p.wishAny ? '상관없음 (서울 전체)' : p.wish.join(', ') || '-', 3], ['주택 소유', p.homeless ? '무주택' : '주택 있음', 5], ['청약통장', p.subscription ? '있음' : '없음', 9]] },
-    { title: '고용·소득', rows: [['상태', jobLabel(p), 6], [p.job === '사업' ? '작년 종합소득' : '세전 총급여', `${(p.gross ?? 0).toLocaleString()}만 원`, 7]] },
+    { title: '고용·소득', rows: [['상태', p.job === '재직' ? `재직 · ${p.company}` : '구직 중', 6], ['세전 총급여', `${(p.gross ?? 0).toLocaleString()}만 원`, 7]] },
     { title: '부모 소득', rows: [['원가구 인원', `${p.household}명`, 8], ['아버지', ins(p.father), 8], ['어머니', ins(p.mother), 8]] },
     { title: '해당 항목', rows: [['선택', p.vulnerable.join(', ') || '-', 10]] },
   ]

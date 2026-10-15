@@ -53,7 +53,7 @@ export function stepValid(p: Profile, step: number): boolean {
     case 3: return p.wishAny || p.wish.length > 0
     case 4: return p.married !== null
     case 5: return p.homeless !== null
-    case 6: return p.job === '구직' || p.job === '사업' || (p.job === '재직' && !!p.company)
+    case 6: return p.job === '구직' || (p.job === '재직' && !!p.company)
     case 7: return p.gross !== null
     case 8: {
       const ok = (x: Profile['father']) => !!x.type && (x.type === '피부양자' || x.type === '모름' || (x.premium ?? 0) > 0)
@@ -141,7 +141,6 @@ export default function Onboarding({ profile: p, step, edit, onChange, onNext, o
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div className="seg">
           <Opt<Profile["job"]> value="재직" cur={p.job} set={(v) => set({ job: v })} label="재직 중이에요" />
-          <Opt<Profile["job"]> value="사업" cur={p.job} set={(v) => set({ job: v, company: null })} label="개인사업자예요 (프리랜서 포함)" />
           <Opt<Profile["job"]> value="구직" cur={p.job} set={(v) => set({ job: v, company: null })} label="구직 중이에요 (미취업)" />
         </div>
         {p.job === '재직' && (
@@ -157,8 +156,8 @@ export default function Onboarding({ profile: p, step, edit, onChange, onNext, o
       </div>
     )
   } else if (step === 7) {
-    title = p.job === '사업' ? <>작년 종합소득금액은<br />얼마인가요?</> : <>작년 세전 총급여는<br />얼마인가요?</>
-    desc = p.job === '사업' ? '종합소득세 신고서의 종합소득금액(매출에서 필요경비를 뺀 금액)을 적어주세요. 근로소득도 있으면 합쳐서 적어주세요' : p.job === '구직' ? '소득이 없으면 0을, 아르바이트 소득이 있으면 그 금액을 적어주세요' : '원천징수영수증의 총급여(비과세 제외)를 적어주세요'
+    title = <>작년 세전 총급여는<br />얼마인가요?</>
+    desc = p.job === '구직' ? '소득이 없으면 0을, 아르바이트 소득이 있으면 그 금액을 적어주세요' : '원천징수영수증의 총급여(비과세 제외)를 적어주세요'
     body = (
       <div className="field">
         <label htmlFor="gross">연</label>

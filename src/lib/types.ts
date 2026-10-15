@@ -68,10 +68,7 @@ export interface Eligibility {
     asset: string
     vulnerable: string
   }
-  jobCode: string // 무관 / 재직(근로자만) / 구직 / 소득자(근로·사업) / 사업(사업자만)
-  /** 사업자일 때 소득 상한(연 만 원)과 기준(종합소득·사업소득·매출) */
-  bizCap: number | null
-  bizBasis: string
+  jobCode: string // 무관 / 재직 / 구직
   companyCode: string // 무관 / 중소 / 중소·중견
   subscriptionRequired: boolean
   ownBasis: string // 없음 / 중위소득% / 도시근로자% / 월 원 / 연 만원
@@ -123,7 +120,7 @@ export interface Profile {
   wishAny: boolean
   married: boolean | null
   homeless: boolean | null
-  job: '재직' | '구직' | '사업' | null
+  job: '재직' | '구직' | null
   company: '중소기업' | '중견기업' | '대기업' | '공공기관' | null
   gross: number | null // 연 세전 총급여, 만 원
   household: number

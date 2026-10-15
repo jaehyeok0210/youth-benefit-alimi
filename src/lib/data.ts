@@ -86,8 +86,6 @@ function toEligibility(rows: string[][]): Record<string, Eligibility> {
       vulnCode: r[22] || '없음',
       vulnTargets: (r[23] || '').split(',').map((s) => s.trim()).filter(Boolean),
       note: r[24] || '',
-      bizCap: num(r[25]),
-      bizBasis: (r[26] || '').trim(),
     }
   }
   return out
